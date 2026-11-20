@@ -39,11 +39,12 @@
   --stock: #e8b45c; --stock-soft: #3a2f1c; color-scheme: dark;
 }
 * { box-sizing: border-box; }
+html { font-size: 14px; }
 [hidden] { display: none !important; }
 html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 body {
   margin: 0;
-  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 1rem; line-height: 1.5;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 24px 48px;
@@ -88,7 +89,7 @@ form { display: grid; gap: 14px; }
 .grid .wide { grid-column: span 2; }
 @media (max-width: 640px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid .wide { grid-column: span 2; } }
 .extra-grid { padding-top: 12px; border-top: 1px dashed var(--line); }
-label.f { display: grid; gap: 4px; font-size: 0.82rem; color: var(--muted); font-weight: 500; min-width: 0; align-content: start; }
+label.f, div.f { display: grid; gap: 4px; font-size: 0.82rem; color: var(--muted); font-weight: 500; min-width: 0; align-content: start; }
 label.f > span { overflow-wrap: anywhere; }
 label.f input, .fields select, .fields input[type=text] {
   width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 10px; color: var(--fg); font-size: 0.95rem;
@@ -126,7 +127,8 @@ td.name { min-width: 120px; max-width: 220px; }
 .clip { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; }
 .clip.open { white-space: normal; overflow-wrap: anywhere; }
 td.ord-c input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; margin: 0; vertical-align: middle; }
-td.txt { min-width: 90px; max-width: 200px; overflow-wrap: anywhere; }
+td.txt { min-width: 70px; max-width: 160px; }
+td { white-space: nowrap; }
 td.date-c { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
 td.name .date { display: block; font-size: 0.78rem; color: var(--muted); }
 td.pos { color: var(--gain); font-weight: 600; } td.neg { color: var(--loss); font-weight: 600; }
@@ -230,6 +232,51 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-size: 0.88rem; max-width: calc(100% - 32px); text-align: center; }
 @media (prefers-reduced-motion: no-preference) { .toast { transition: opacity .2s; } }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* Máy tính (màn ngang): rộng hết màn hình, form nhiều cột, chữ nhỏ gọn */
+@media (min-width: 1024px) {
+  html { font-size: 13.5px; }
+  .wrap { max-width: 1600px; }
+  .pane:not([data-pane="don-hang"]) { max-width: 1000px; width: 100%; margin-inline: auto; }
+  .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 12px; }
+  label.f input, .fields select, .fields input[type=text] { padding: 7px 9px; }
+  label.f.checkf .box { height: 36px; }
+  .thumb.lg { width: 56px; height: 56px; }
+  td { padding: 7px 8px; }
+  td.name { max-width: 240px; }
+  td.txt { max-width: 150px; }
+  th { padding: 8px 6px; }
+  td { padding: 7px 6px; }
+}
+@media (min-width: 1360px) { .grid { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+
+/* Điện thoại: mỗi đơn là 1 thẻ, không phải kéo ngang bảng */
+@media (max-width: 640px) {
+  body { padding-block: 14px 40px; }
+  h1 { font-size: 1.35rem; }
+  .card { padding: 14px 12px; }
+  .stat { padding: 10px 12px; }
+  .stat .v { font-size: 1.15rem; }
+  label.f input, .fields select, .fields input[type=text], .sync-form input { font-size: 16px; } /* iPhone không tự phóng to khi gõ */
+  .table-wrap { overflow: visible; }
+  .table-wrap table, .table-wrap tbody { display: block; }
+  .table-wrap thead { display: none; }
+  #rows tr { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 14px; padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  #rows tr.pending { background: var(--stock-soft); border-color: transparent; }
+  #rows td { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 2px 0; border: 0; min-width: 0; max-width: none; font-size: 0.92rem; text-align: right; }
+  #rows td::before { content: attr(data-label); display: inline-block; color: var(--muted); font-size: 0.8rem; font-weight: 400; text-align: left; white-space: nowrap; }
+  #rows td:empty { display: none; }
+  #rows td > .clip { min-width: 0; }
+  #rows td.name { order: -3; grid-column: 1 / -1; font-weight: 600; font-size: 1rem; justify-content: start; text-align: left; }
+  #rows td.date-c { order: -2; grid-column: 1 / -1; justify-content: start; font-size: 0.8rem; }
+  #rows td.name::before, #rows td.date-c::before, #rows td.img-c::before, #rows td.acts::before { content: none; }
+  #rows tr:has(td.img-c img) td.name, #rows tr:has(td.img-c img) td.date-c { padding-left: 54px; }
+  #rows tr:has(td.img-c img) td.date-c { min-height: 22px; margin-bottom: 4px; }
+  #rows .pill { padding: 2px 8px; }
+  #rows td.img-c { position: absolute; left: 12px; top: 10px; padding: 0; }
+  #rows td.acts { order: 10; grid-column: 1 / -1; justify-content: end; padding-top: 6px; }
+  #rows td.n.pos, #rows td.n.neg { font-size: 1rem; }
+}
 </style>
 </head>
 <body>
@@ -1273,7 +1320,7 @@ function readFields_(cfg) {
     list.forEach((o) => {
       const p = profitOf(o);
       const tr = el("tr", { className: o.done ? "" : "pending" });
-      cols.forEach((c) => tr.append(cellFor(c, o, p)));
+      cols.forEach((c) => { const td = cellFor(c, o, p); td.dataset.label = colLabel(c); tr.append(td); });
       const acts = el("td", { className: "acts" });
       if (confirmDelId === o.id) {
         acts.append(btn("Xoá thật", "btn-danger", () => del(o)), " ", btn("Không", "", () => { confirmDelId = null; render(); }));
@@ -1304,15 +1351,13 @@ function readFields_(cfg) {
       const v = (o.extra || {})[f.id];
       if (f.type === "money") return el("td", { className: "n" + (f.effect === "plus" && !o.done ? " dim" : ""), textContent: v ? fmt(Number(v)) : "" });
       if (f.type === "check") return el("td", { className: "c", textContent: v ? "✓" : "" });
-      return el("td", { className: "txt", textContent: v || "" });
+      return el("td", { className: "txt" }, v ? clip(String(v)) : "");
     }
     switch (c.key) {
       case "date": return el("td", { className: "date-c", textContent: o.date ? o.date.split("-").reverse().join("/") : "" });
       case "name": {
         const t = o.name || (productOf(o) || {}).name || "(không tên)";
-        const sp = el("span", { className: "clip", textContent: t, title: t });
-        sp.addEventListener("click", () => sp.classList.toggle("open"));
-        return el("td", { className: "name" }, sp);
+        return el("td", { className: "name" }, clip(t));
       }
       case "ordered": {
         const cb = el("input", { type: "checkbox", checked: !!(o.extra || {})._ord, title: "Đã order" });
@@ -1335,6 +1380,12 @@ function readFields_(cfg) {
       }
     }
     return el("td");
+  }
+  // Chữ dài chỉ hiện 1 dòng; rê chuột xem đủ, bấm để mở/thu
+  function clip(t) {
+    const sp = el("span", { className: "clip", textContent: t, title: t });
+    sp.addEventListener("click", () => sp.classList.toggle("open"));
+    return sp;
   }
   function btn(label, cls, fn) { const b = el("button", { type: "button", textContent: label }); if (cls) b.className = cls; b.addEventListener("click", fn); return b; }
 
