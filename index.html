@@ -22,8 +22,8 @@
   --loss-soft: #fbe9e7;
   --stock: #9a6412;
   --stock-soft: #f8eedb;
-  --row-done: #e3f4ea; --row-ord: #fdf6cf; --row-stk: #fde6d2;
-  --ord: #8a6d00; --stk: #b5530f;
+  --row-done: #e3f4ea; --row-ord: #fdf6cf; --row-stk: #fde2df;
+  --ord: #8a6d00; --stk: #b42318;
   --font-display: "Lexend", "Be Vietnam Pro", system-ui, sans-serif;
   --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
   --r: 10px;
@@ -33,14 +33,14 @@
     --bg: #121715; --surface: #1a211e; --fg: #e8eeeb; --muted: #9aa8a2; --line: #2c3632;
     --accent: #4cc4a4; --accent-soft: #1d3a32; --gain: #5fd3a8; --loss: #ff8a7a; --loss-soft: #3a201d;
     --stock: #e8b45c; --stock-soft: #3a2f1c; color-scheme: dark;
-    --row-done: #193a2c; --row-ord: #3a3418; --row-stk: #40261a; --ord: #e9cf5a; --stk: #f29a5c;
+    --row-done: #193a2c; --row-ord: #3a3418; --row-stk: #45201d; --ord: #e9cf5a; --stk: #ff8a7a;
   }
 }
 :root[data-theme="dark"] {
   --bg: #121715; --surface: #1a211e; --fg: #e8eeeb; --muted: #9aa8a2; --line: #2c3632;
   --accent: #4cc4a4; --accent-soft: #1d3a32; --gain: #5fd3a8; --loss: #ff8a7a; --loss-soft: #3a201d;
   --stock: #e8b45c; --stock-soft: #3a2f1c; color-scheme: dark;
-    --row-done: #193a2c; --row-ord: #3a3418; --row-stk: #40261a; --ord: #e9cf5a; --stk: #f29a5c;
+    --row-done: #193a2c; --row-ord: #3a3418; --row-stk: #45201d; --ord: #e9cf5a; --stk: #ff8a7a;
 }
 * { box-sizing: border-box; }
 html { font-size: 14px; }
@@ -147,6 +147,8 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
 .pill.stk { background: var(--row-stk); color: var(--stk); border-color: color-mix(in srgb, var(--stk) 35%, transparent); }
 .pill.done { border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
 .stat.stock .v { color: var(--stk); }
+#rows select.pill { appearance: none; -webkit-appearance: none; font-family: inherit; padding-right: 22px; background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: right 11px center, right 7px center; background-size: 4px 4px; background-repeat: no-repeat; }
+.pill.new { background-color: var(--surface); color: var(--muted); border-color: var(--line); }
 .pill:hover { border-color: currentColor; }
 .acts { white-space: nowrap; text-align: right; }
 .acts button { font-size: 0.8rem; padding: 3px 8px; }
@@ -379,7 +381,7 @@ td.n .stack { justify-items: end; }
       <datalist id="skuList"></datalist>
       <div class="sku-hint" id="skuHint" hidden><span id="skuHintMsg"></span><button type="button" id="skuAdd">Thêm sản phẩm này</button></div>
       <div class="form-foot">
-        <label class="check"><input type="checkbox" id="fDone" checked> Đơn hoàn thành</label>
+        <label class="check">Trạng thái <select id="fSt"><option value="new">Chưa order</option><option value="ord">Đã order</option><option value="done">Hoàn thành</option><option value="stock">Tồn kho</option></select></label>
         <span class="preview" id="preview"></span>
         <div class="right">
           <button type="button" id="cancelEdit" hidden>Huỷ sửa</button>
@@ -394,6 +396,7 @@ td.n .stack { justify-items: end; }
       <h2>Danh sách đơn</h2>
       <div class="filters" role="group" aria-label="Lọc đơn">
         <button type="button" data-f="all" aria-pressed="true">Tất cả</button>
+        <button type="button" data-f="new" aria-pressed="false">Chưa order</button>
         <button type="button" data-f="ord" aria-pressed="false">Đã order</button>
         <button type="button" data-f="done" aria-pressed="false">Hoàn thành</button>
         <button type="button" data-f="stock" aria-pressed="false">Tồn kho</button>
@@ -848,6 +851,11 @@ function readFields_(cfg) {
   let month = { y: now.getFullYear(), m: now.getMonth() + 1, all: false };
 
   // ----- tính tiền -----
+  const ST_CLS = { new: "new", ord: "ord", done: "done", stock: "stk" };
+  const ST_LABEL = { new: "Chưa order", ord: "Đã order", done: "Hoàn thành", stock: "Tồn kho" };
+  // 4 trạng thái: chưa order (trắng) · đã order (vàng) · hoàn thành (xanh) · tồn kho (đỏ)
+  // Đơn cũ chưa có _st: tích "Đã order" → đã order, không thì tồn kho như trước
+  const stOf = (o) => { const x = o.extra || {}; if (o.done) return "done"; if (x._st === "stock") return "stock"; if (x._st === "new" || x._st === "ord") return x._ord ? "ord" : "new"; return x._ord ? "ord" : "stock"; };
   // Hoàn thành: thực nhận + khoản cộng − nhập − ship − khoản trừ
   // Tồn kho:    −(nhập + ship + khoản trừ)
   function extraSum(o, effect) {
@@ -1207,6 +1215,9 @@ function readFields_(cfg) {
     const inp = e.target;
     if (inp.classList && inp.classList.contains("money") && !inp.disabled && inp.value.trim()) inp.value = parseMoney(inp.value).toLocaleString("vi-VN");
   });
+  // Đồng bộ ô "Đã order" với trạng thái
+  $("fSt").addEventListener("change", () => { const v = $("fSt").value; if (v === "ord") $("fOrd").checked = true; if (v === "new") $("fOrd").checked = false; });
+  $("fOrd").addEventListener("change", () => { const v = $("fSt").value; if ($("fOrd").checked && v === "new") $("fSt").value = "ord"; if (!$("fOrd").checked && v === "ord") $("fSt").value = "new"; });
   $("form").addEventListener("input", updatePreview);
   $("form").addEventListener("change", updatePreview);
 
@@ -1340,8 +1351,8 @@ function readFields_(cfg) {
       cost: (costFromCny(cny, rate) * qty || parseMoney($("fCost").value)) + itemsCost(its),
       ship: parseMoney($("fShip").value),
       revenue: parseMoney($("fRev").value),
-      done: $("fDone").checked,
-      extra: { ...readExtra(), _ord: $("fOrd").checked, _cny: cny || "", _rate: anyCny ? rate || "" : "", _qty: qty, _items: its.length ? its : undefined },
+      done: $("fSt").value === "done",
+      extra: { ...readExtra(), _st: $("fSt").value === "done" ? undefined : $("fSt").value, _ord: $("fOrd").checked, _cny: cny || "", _rate: anyCny ? rate || "" : "", _qty: qty, _items: its.length ? its : undefined },
     };
   }
   function updatePreview() {
@@ -1351,7 +1362,7 @@ function readFields_(cfg) {
     $("fProfit").style.color = p < 0 ? "var(--loss)" : p > 0 ? "var(--gain)" : "";
     $("preview").innerHTML = o.done
       ? "Tính vào doanh thu, lãi <b class='" + (p < 0 ? "neg" : "pos") + "'>" + fmt(p) + "</b>"
-      : "Tính là <b>tồn kho</b>, lãi tạm <b class='neg'>" + fmt(p) + "</b>";
+      : "Tính là <b>" + ST_LABEL[o.extra._st || "new"].toLowerCase() + "</b>, lãi tạm <b class='neg'>" + fmt(p) + "</b>";
   }
 
   function resetForm() {
@@ -1361,7 +1372,7 @@ function readFields_(cfg) {
     setThumb("fImg", "");
     $("skuHint").hidden = true;
     $("fDate").value = today();
-    $("fDone").checked = true;
+    $("fSt").value = "new";
     $("fRate").value = money(lastRate());
     $("fQty").value = "1"; unitCost = 0;
     formItems = []; renderItems();
@@ -1419,7 +1430,7 @@ function readFields_(cfg) {
     onCny();
     $("fShip").value = money(o.ship);
     $("fRev").value = money(o.revenue);
-    $("fDone").checked = !!o.done;
+    $("fSt").value = stOf(o);
     $("fOrd").checked = !!(o.extra || {})._ord;
     fillExtra(o.extra);
     $("formTitle").textContent = "Sửa đơn";
@@ -1449,17 +1460,16 @@ function readFields_(cfg) {
 
   // ----- hiển thị -----
   // Trạng thái: hoàn thành (xanh) > đã order (vàng) > tồn kho (cam)
-  const stOf = (o) => (o.done ? "done" : (o.extra || {})._ord ? "ord" : "stock");
   // khoá sắp xếp ngày: chấp nhận yyyy-mm-dd, dd/mm/yyyy, ISO có giờ
   const dKey = (o) => { const d = String(o.date || ""); const m = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0") : d.slice(0, 10); };
   function render() {
     $("monthLabel").textContent = month.all ? "Mọi tháng" : "Tháng " + month.m + "/" + month.y;
     $("allM").setAttribute("aria-pressed", String(month.all));
     const scope = orders.filter(inMonth);
-    let rev = 0, plus = 0, cost = 0, ship = 0, other = 0, profit = 0, stock = 0, nDone = 0, nStock = 0, nOrd = 0;
+    let rev = 0, plus = 0, cost = 0, ship = 0, other = 0, profit = 0, stock = 0, nDone = 0, nStock = 0, nOrd = 0, nNew = 0;
     scope.forEach((o) => {
       cost += o.cost || 0; ship += o.ship || 0; other += extraSum(o, "minus"); profit += profitOf(o);
-      if (o.done) { rev += o.revenue || 0; plus += extraSum(o, "plus"); nDone++; } else if (stOf(o) === "stock") { stock += (o.cost || 0) + (o.ship || 0) + extraSum(o, "minus"); nStock++; } else nOrd++;
+      if (o.done) { rev += o.revenue || 0; plus += extraSum(o, "plus"); nDone++; } else if (stOf(o) === "stock") { stock += (o.cost || 0) + (o.ship || 0) + extraSum(o, "minus"); nStock++; } else if (stOf(o) === "ord") nOrd++; else nNew++;
     });
     $("sRev").textContent = fmt(rev + plus);
     $("sRevD").textContent = nDone + " đơn hoàn thành" + (plus ? " · cộng thêm " + fmt(plus) : "");
@@ -1467,9 +1477,9 @@ function readFields_(cfg) {
     $("sCostD").textContent = "nhập " + fmt(cost) + " · ship " + fmt(ship) + (other ? " · khác " + fmt(other) : "");
     $("sProfit").textContent = fmt(profit);
     $("sProfit").className = "v num " + (profit < 0 ? "neg" : "pos");
-    $("sProfitD").textContent = nStock + nOrd ? "đã trừ " + (nStock + nOrd) + " đơn chưa xong" : "tất cả đơn đã xong";
+    $("sProfitD").textContent = nStock + nOrd + nNew ? "đã trừ " + (nStock + nOrd + nNew) + " đơn chưa xong" : "tất cả đơn đã xong";
     $("sStock").textContent = nStock + " đơn";
-    $("sStockD").textContent = "tiền tồn " + fmt(stock) + " (nhập + phí)" + (nOrd ? " · " + nOrd + " đơn đã order" : "");
+    $("sStockD").textContent = "tiền tồn " + fmt(stock) + " (nhập + phí)" + (nNew ? " · " + nNew + " chưa order" : "") + (nOrd ? " · " + nOrd + " đã order" : "");
 
     // tiêu đề bảng theo thứ tự cột
     const cols = layout.filter((c) => c.show !== false);
@@ -1488,7 +1498,7 @@ function readFields_(cfg) {
       const p = profitOf(o);
       const its = orderItems(o);
       const n = its.length;
-      const trs = its.map((it, k) => el("tr", { className: (o.done ? "" : "pending ") + "st-" + ({ done: "done", ord: "ord", stock: "stk" })[stOf(o)] + (n > 1 ? " grp" : "") + (k ? " cont" : "") + (k === n - 1 ? " last" : "") }));
+      const trs = its.map((it, k) => el("tr", { className: (o.done ? "" : "pending ") + "st-" + ST_CLS[stOf(o)] + (n > 1 ? " grp" : "") + (k ? " cont" : "") + (k === n - 1 ? " last" : "") }));
       const tr = trs[0];
       cols.forEach((c) => {
         if (isPerItem(c)) {
@@ -1515,7 +1525,7 @@ function readFields_(cfg) {
         : "Chưa có đơn nào. Điền form phía trên rồi bấm “Lưu đơn” để ghi đơn đầu tiên.";
     } else empty.hidden = true;
     const hasMinus = fields.some((f) => f.type === "money" && f.effect === "minus");
-    $("legend").textContent = "Nền xanh: hoàn thành · vàng: đã order · cam: tồn kho. Bấm ô trạng thái để bật/tắt hoàn thành. Đơn chưa xong có lãi âm bằng tiền nhập + ship" + (hasMinus ? " + các khoản trừ." : ".");
+    $("legend").textContent = "Nền trắng: chưa order · vàng: đã order · xanh: hoàn thành · đỏ: tồn kho. Bấm ô trạng thái để đổi. Đơn chưa xong có lãi âm bằng tiền nhập + ship" + (hasMinus ? " + các khoản trừ." : ".");
   }
   function colClass(c) {
     const f = fieldOf(c.key);
@@ -1550,8 +1560,10 @@ function readFields_(cfg) {
       case "profit": return el("td", { className: "n " + (p < 0 ? "neg" : "pos"), textContent: fmt(p) });
       case "status": {
         const st = stOf(o);
-        const pill = el("button", { type: "button", className: "pill " + ({ done: "done", ord: "ord", stock: "stk" })[st], textContent: ({ done: "✓ Hoàn thành", ord: "Đã order", stock: "Tồn kho" })[st] });
-        pill.addEventListener("click", () => toggleDone(o));
+        const pill = el("select", { className: "pill " + ST_CLS[st], title: "Đổi trạng thái" });
+        ["new", "ord", "done", "stock"].forEach((v) => pill.append(el("option", { value: v, textContent: (v === "done" ? "✓ " : "") + ST_LABEL[v] })));
+        pill.value = st;
+        pill.addEventListener("change", () => setStatus(o, pill.value));
         return el("td", {}, pill);
       }
     }
@@ -1580,15 +1592,22 @@ function readFields_(cfg) {
   function btn(label, cls, fn) { const b = el("button", { type: "button", textContent: label }); if (cls) b.className = cls; b.addEventListener("click", fn); return b; }
 
   function toggleOrdered(o, v) {
+    const st = stOf(o);
     o.extra = { ...(o.extra || {}), _ord: v };
+    if (!o.done && st !== "stock") o.extra._st = v ? "ord" : "new";
+    else if (!o.done && v) o.extra._st = "ord";
     try { o.updatedAt = new Date().toISOString(); save(); enqueue({ op: "upsert", order: o }); }
     catch (e) { toast("Không cập nhật được."); }
     render();
   }
-  function toggleDone(o) {
-    o.done = !o.done;
-    try { o.updatedAt = new Date().toISOString(); save(); enqueue({ op: "upsert", order: o }); toast(o.done ? "Đã chuyển sang hoàn thành" : stOf(o) === "ord" ? "Đã chuyển về Đã order" : "Đã chuyển vào tồn kho"); }
-    catch (e) { o.done = !o.done; toast("Không cập nhật được."); }
+  function setStatus(o, v) {
+    const x = { ...(o.extra || {}) };
+    if (v !== "done") x._st = v;
+    if (v === "ord") x._ord = true;
+    if (v === "new") x._ord = false;
+    o.done = v === "done"; o.extra = x;
+    try { o.updatedAt = new Date().toISOString(); save(); enqueue({ op: "upsert", order: o }); toast("Đã chuyển sang " + ST_LABEL[v].toLowerCase()); }
+    catch (e) { toast("Không cập nhật được."); }
     render();
   }
   function del(o) {
@@ -1867,7 +1886,7 @@ function readFields_(cfg) {
       if (f) { const v = (o.extra || {})[f.id]; return f.type === "check" ? (v ? "Có" : "") : f.type === "money" ? (Number(v) || 0) : (v || ""); }
       const pr = productOf(o);
       const x = o.extra || {};
-      return { qty: qtyOf(o), cny: x._cny || "", rate: x._cny ? x._rate || "" : "", ordered: x._ord ? "Có" : "", date: o.date, sku: o.sku || "", img: pr && /^https?:/.test(pr.img || "") ? pr.img : "", name: [o.name || (pr ? pr.name : "")].concat(itemsOf(o).map((it) => (it.name || it.sku) + (it.qty > 1 ? " ×" + it.qty : ""))).join(" + "), cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: o.done ? "Hoàn thành" : "Tồn kho" }[c.key];
+      return { qty: qtyOf(o), cny: x._cny || "", rate: x._cny ? x._rate || "" : "", ordered: x._ord ? "Có" : "", date: o.date, sku: o.sku || "", img: pr && /^https?:/.test(pr.img || "") ? pr.img : "", name: [o.name || (pr ? pr.name : "")].concat(itemsOf(o).map((it) => (it.name || it.sku) + (it.qty > 1 ? " ×" + it.qty : ""))).join(" + "), cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: ST_LABEL[stOf(o)] }[c.key];
     };
     const lines = [header.map(q).join(",")];
     orders.slice().sort((a, b) => (a.date || "").localeCompare(b.date || "")).forEach((o) => {
