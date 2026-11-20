@@ -182,6 +182,26 @@ details.card[open] > summary { margin-bottom: 14px; }
 .codebox { position: relative; margin-top: 6px; }
 .codebox pre { max-height: 220px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 0.75rem; line-height: 1.4; margin: 0; }
 .codebox button { position: absolute; top: 6px; right: 6px; font-size: 0.8rem; padding: 3px 10px; }
+/* Sản phẩm & ảnh */
+.thumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: var(--bg); border: 1px solid var(--line); display: block; flex: none; }
+.thumb.lg { width: 72px; height: 72px; }
+span.thumb { display: grid; place-items: center; color: var(--muted); font-size: 0.7rem; }
+td.img-c { width: 52px; }
+td.sku-c { white-space: nowrap; font-weight: 600; }
+.f.imgf { align-content: start; }
+.sku-hint { font-size: 0.85rem; color: var(--stock); background: var(--stock-soft); border-radius: 8px; padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sku-hint button { font-size: 0.82rem; padding: 3px 10px; }
+.pimg { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.pimg .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.psearch { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 8px 10px; color: var(--fg); margin-top: 14px; }
+.plist { display: grid; gap: 6px; margin-top: 10px; max-height: 460px; overflow: auto; }
+.prow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
+.prow .info { min-width: 0; display: grid; }
+.prow .code { font-weight: 600; }
+.prow .nm { color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; }
+.prow .ctrl { display: flex; gap: 4px; flex-wrap: wrap; justify-content: end; }
+.prow .ctrl button { font-size: 0.8rem; padding: 3px 8px; }
+.prow .confirm { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.85rem; color: var(--loss); }
 .backup { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .backup .hint { flex-basis: 100%; margin: 0; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-size: 0.88rem; max-width: calc(100% - 32px); text-align: center; }
@@ -220,12 +240,16 @@ details.card[open] > summary { margin-bottom: 14px; }
     <form id="form" autocomplete="off">
       <div class="grid" id="fGrid">
         <label class="f" data-col="date"><span class="lbl">Ngày</span><input type="date" id="fDate" required></label>
+        <label class="f" data-col="sku"><span class="lbl">Mã SP</span><input type="text" id="fSku" list="skuList" autocomplete="off" placeholder="Gõ mã, VD: AT01"></label>
+        <div class="f imgf" data-col="img"><span class="lbl">Ảnh</span><span class="thumb lg" id="fImg"></span></div>
         <label class="f wide" data-col="name"><span class="lbl">Tên hàng</span><input type="text" id="fName" placeholder="VD: Áo thun trắng size M – chị Lan"></label>
         <label class="f" data-col="cost"><span class="lbl">Tiền nhập</span><input class="money" inputmode="numeric" id="fCost" placeholder="0"></label>
         <label class="f" data-col="ship"><span class="lbl">Tiền ship</span><input class="money" inputmode="numeric" id="fShip" placeholder="0"></label>
         <label class="f" data-col="revenue"><span class="lbl">Thực nhận</span><input class="money" inputmode="numeric" id="fRev" placeholder="0"></label>
         <label class="f" data-col="profit"><span class="lbl">Tiền lãi</span><input class="money" id="fProfit" disabled value="0"></label>
       </div>
+      <datalist id="skuList"></datalist>
+      <div class="sku-hint" id="skuHint" hidden><span id="skuHintMsg"></span><button type="button" id="skuAdd">Thêm sản phẩm này</button></div>
       <div class="form-foot">
         <label class="check"><input type="checkbox" id="fDone" checked> Đơn hoàn thành</label>
         <span class="preview" id="preview"></span>
@@ -255,6 +279,34 @@ details.card[open] > summary { margin-bottom: 14px; }
     <p class="empty" id="empty"></p>
     <p class="legend" id="legend"></p>
   </section>
+
+  <details class="card" id="prodCard">
+    <summary>Sản phẩm</summary>
+    <p class="hint" style="margin-top:0">Lưu sẵn mã, tên, ảnh (và giá nhập nếu muốn). Khi ghi đơn chỉ cần gõ mã SP, tên và ảnh tự hiện; giá nhập tự điền nếu ô đang trống.</p>
+    <div class="grid" style="margin-top:12px">
+      <label class="f"><span>Mã SP</span><input type="text" id="pCode" autocomplete="off" placeholder="VD: AT01"></label>
+      <label class="f wide"><span>Tên sản phẩm</span><input type="text" id="pName" placeholder="VD: Áo thun trắng size M"></label>
+      <label class="f"><span>Giá nhập (tuỳ chọn)</span><input class="money" inputmode="numeric" id="pCost" placeholder="0"></label>
+      <div class="f wide"><span>Ảnh</span>
+        <div class="pimg">
+          <span class="thumb lg" id="pImgPrev"></span>
+          <div class="btns">
+            <button type="button" id="pPick">Chọn ảnh / chụp ảnh</button>
+            <button type="button" id="pImgClear" hidden>Bỏ ảnh</button>
+          </div>
+        </div>
+        <input type="file" id="pFile" accept="image/*" hidden>
+      </div>
+      <label class="f wide"><span>Hoặc dán link ảnh</span><input type="url" id="pUrl" placeholder="https://…"></label>
+    </div>
+    <div class="right" style="margin-top:12px; justify-content:end">
+      <button type="button" id="pCancel" hidden>Huỷ sửa</button>
+      <button type="button" class="btn-primary" id="pSave">Lưu sản phẩm</button>
+    </div>
+    <input type="search" class="psearch" id="pSearch" placeholder="Tìm theo mã hoặc tên…" aria-label="Tìm sản phẩm">
+    <div class="plist" id="prodList"></div>
+    <p class="hint">Ảnh chọn từ máy được thu nhỏ (khoảng 200px) để lưu nhẹ và đồng bộ được.</p>
+  </details>
 
   <details class="card" id="fieldsCard">
     <summary>Cột &amp; trường</summary>
@@ -350,8 +402,10 @@ details.card[open] > summary { margin-bottom: 14px; }
 <script type="text/plain" id="gsCode">// Sổ lãi bán hàng – lưu dữ liệu vào Google Sheet này
 const SECRET = "doi-mat-khau-nay"; // ĐỔI thành mật khẩu riêng của bạn
 
-const HEAD = ["Mã", "Ngày", "Tên hàng", "Tiền nhập", "Tiền ship", "Thực nhận", "Hoàn thành", "Trường thêm (JSON)", "Tạo lúc", "Sửa lúc"];
-const FMT = ["@", "@", "@", "#,##0", "#,##0", "#,##0", "General", "@", "@", "@"];
+const HEAD = ["Mã", "Ngày", "Tên hàng", "Tiền nhập", "Tiền ship", "Thực nhận", "Hoàn thành", "Trường thêm (JSON)", "Tạo lúc", "Sửa lúc", "Mã SP"];
+const FMT = ["@", "@", "@", "#,##0", "#,##0", "#,##0", "General", "@", "@", "@", "@"];
+const PHEAD = ["ID", "Mã SP", "Tên SP", "Giá nhập", "Ảnh", "Sửa lúc"];
+const PFMT = ["@", "@", "@", "#,##0", "@", "@"];
 
 function doGet(e) { return handle_((e && e.parameter) || {}); }
 function doPost(e) {
@@ -366,12 +420,16 @@ function handle_(req) {
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    const sh = sheet_("DonHang", true);
-    const cfg = sheet_("CaiDat", false);
-    if (req.action === "load") return out_({ ok: true, orders: readOrders_(sh), fields: readFields_(cfg) });
+    const sh = sheet_("DonHang", HEAD);
+    const cfg = sheet_("CaiDat", null);
+    const ps = sheet_("SanPham", PHEAD);
+    if (req.action === "load") return out_({ ok: true, orders: readOrders_(sh), fields: readFields_(cfg), products: readProducts_(ps) });
     if (req.action === "ops") {
-      (req.ops || []).forEach(function (op) { apply_(sh, cfg, op); });
-      return out_({ ok: true });
+      const errors = [];
+      (req.ops || []).forEach(function (op) {
+        try { apply_(sh, cfg, ps, op); } catch (err) { errors.push(String(op.op) + ": " + err); }
+      });
+      return out_({ ok: true, errors: errors });
     }
     return out_({ ok: false, error: "bad_action" });
   } finally {
@@ -379,15 +437,13 @@ function handle_(req) {
   }
 }
 
-function sheet_(name, withHead) {
+function sheet_(name, head) {
   const ss = SpreadsheetApp.getActive();
   let sh = ss.getSheetByName(name);
-  if (!sh) {
-    sh = ss.insertSheet(name);
-    if (withHead) {
-      sh.getRange(1, 1, 1, HEAD.length).setValues([HEAD]).setFontWeight("bold");
-      sh.setFrozenRows(1);
-    }
+  if (!sh) sh = ss.insertSheet(name);
+  if (head && sh.getRange(1, head.length).getValue() === "") {
+    sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight("bold");
+    sh.setFrozenRows(1);
   }
   return sh;
 }
@@ -400,13 +456,19 @@ function safe_(s) { s = String(s == null ? "" : s); return /^[=+\-@]/.test(s) ? 
 
 function rowOf_(o) {
   return [String(o.id), String(o.date || ""), safe_(o.name), Number(o.cost) || 0, Number(o.ship) || 0,
-    Number(o.revenue) || 0, !!o.done, JSON.stringify(o.extra || {}), String(o.createdAt || ""), String(o.updatedAt || "")];
+    Number(o.revenue) || 0, !!o.done, JSON.stringify(o.extra || {}), String(o.createdAt || ""), String(o.updatedAt || ""), safe_(o.sku)];
 }
 
-function writeRows_(sh, startRow, rows) {
+function prodRow_(p) {
+  const img = String(p.img || "");
+  return [String(p.id), safe_(p.code), safe_(p.name), Number(p.cost) || 0, img.length > 49000 ? "" : img, String(p.updatedAt || "")];
+}
+
+function writeRows_(sh, startRow, rows, fmt) {
   if (!rows.length) return;
-  const r = sh.getRange(startRow, 1, rows.length, HEAD.length);
-  r.setNumberFormats(rows.map(function () { return FMT; }));
+  fmt = fmt || FMT;
+  const r = sh.getRange(startRow, 1, rows.length, fmt.length);
+  r.setNumberFormats(rows.map(function () { return fmt; }));
   r.setValues(rows);
 }
 
@@ -418,7 +480,7 @@ function findRow_(sh, id) {
   return 0;
 }
 
-function apply_(sh, cfg, op) {
+function apply_(sh, cfg, ps, op) {
   if (op.op === "upsert" && op.order && op.order.id) {
     const r = findRow_(sh, op.order.id);
     writeRows_(sh, r || sh.getLastRow() + 1, [rowOf_(op.order)]);
@@ -427,10 +489,20 @@ function apply_(sh, cfg, op) {
     if (r) sh.deleteRow(r);
   } else if (op.op === "fields") {
     cfg.getRange("A1").setNumberFormat("@").setValue(JSON.stringify(op.fields || []));
+  } else if (op.op === "product_upsert" && op.product && op.product.id) {
+    const r = findRow_(ps, op.product.id);
+    writeRows_(ps, r || ps.getLastRow() + 1, [prodRow_(op.product)], PFMT);
+  } else if (op.op === "product_delete" && op.id) {
+    const r = findRow_(ps, op.id);
+    if (r) ps.deleteRow(r);
   } else if (op.op === "replaceAll") {
     if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, HEAD.length).clearContent();
     writeRows_(sh, 2, (op.orders || []).map(rowOf_));
     cfg.getRange("A1").setNumberFormat("@").setValue(JSON.stringify(op.fields || []));
+    if (Array.isArray(op.products)) {
+      if (ps.getLastRow() > 1) ps.getRange(2, 1, ps.getLastRow() - 1, PHEAD.length).clearContent();
+      writeRows_(ps, 2, op.products.map(prodRow_), PFMT);
+    }
   }
 }
 
@@ -450,8 +522,18 @@ function readOrders_(sh) {
         id: String(r[0]), date: d_(r[1]), name: String(r[2]),
         cost: Number(r[3]) || 0, ship: Number(r[4]) || 0, revenue: Number(r[5]) || 0,
         done: r[6] === true || String(r[6]).toUpperCase() === "TRUE",
-        extra: extra, createdAt: String(r[8]), updatedAt: String(r[9])
+        extra: extra, createdAt: String(r[8]), updatedAt: String(r[9]), sku: String(r[10] || "")
       };
+    });
+}
+
+function readProducts_(ps) {
+  const n = ps.getLastRow() - 1;
+  if (n < 1) return [];
+  return ps.getRange(2, 1, n, PHEAD.length).getValues()
+    .filter(function (r) { return r[0] !== "" && r[1] !== ""; })
+    .map(function (r) {
+      return { id: String(r[0]), code: String(r[1]), name: String(r[2]), cost: Number(r[3]) || 0, img: String(r[4] || ""), updatedAt: String(r[5]) };
     });
 }
 
@@ -482,6 +564,7 @@ function readFields_(cfg) {
 
   let orders = [];
   let fields = [];           // [{id, name, type: money|text|check, effect: minus|plus|none}]
+  let products = [];         // [{id, code, name, cost, img, updatedAt}]
   let layout = [];           // thứ tự cột: [{key: "date"|"name"|…|"f:<id>", show, label?}]
   let editingId = null;
   let confirmDelId = null;
@@ -506,6 +589,8 @@ function readFields_(cfg) {
   // ----- cột -----
   const FIXED = {
     date: { label: "Ngày", hint: "Cố định" },
+    img: { label: "Ảnh", hint: "Ảnh theo mã SP" },
+    sku: { label: "Mã SP", hint: "Cố định" },
     name: { label: "Tên hàng", hint: "Cố định" },
     cost: { label: "Tiền nhập", hint: "Cố định · trừ lãi" },
     ship: { label: "Tiền ship", hint: "Cố định · trừ lãi" },
@@ -513,7 +598,7 @@ function readFields_(cfg) {
     profit: { label: "Tiền lãi", hint: "Tự tính" },
     status: { label: "Trạng thái", hint: "Hoàn thành / tồn kho" },
   };
-  const DEFAULT_ORDER = ["date", "name", "cost", "ship", "revenue", "profit", "status"];
+  const DEFAULT_ORDER = ["date", "img", "sku", "name", "cost", "ship", "revenue", "profit", "status"];
   const fieldOf = (key) => key.startsWith("f:") ? fields.find((f) => f.id === key.slice(2)) : null;
   const colLabel = (c) => { const f = fieldOf(c.key); return f ? f.name : (c.label || FIXED[c.key].label); };
   const shown = (key) => { const c = layout.find((x) => x.key === key); return !c || c.show !== false; };
@@ -534,6 +619,19 @@ function readFields_(cfg) {
     });
     fields.forEach((f) => { const k = "f:" + f.id; if (!seen.has(k)) { seen.add(k); insertAt({ key: k, show: true }); } });
   }
+  const productByCode = (code) => { code = String(code || "").trim().toLowerCase(); return code ? products.find((p) => p.code.toLowerCase() === code) : null; };
+  function thumb(src, lg) {
+    if (!src) return el("span", { className: "thumb" + (lg ? " lg" : ""), textContent: lg ? "Chưa có ảnh" : "" });
+    const im = el("img", { className: "thumb" + (lg ? " lg" : ""), src, alt: "", loading: "lazy" });
+    im.addEventListener("error", () => im.replaceWith(el("span", { className: "thumb" + (lg ? " lg" : ""), textContent: "Lỗi ảnh" })));
+    return im;
+  }
+  function setThumb(id, src) {
+    const old = $(id);
+    const t = thumb(src, true);
+    t.id = id;
+    old.replaceWith(t);
+  }
   const cfgPayload = () => ({ v: 3, fields, layout });
   function parseCfg(c) {
     if (Array.isArray(c)) return { fields: c, layout: [] };
@@ -550,12 +648,14 @@ function readFields_(cfg) {
   const KEY = "so-lai-ban-hang:orders";
   const KEY_F = "so-lai-ban-hang:fields";
   const KEY_L = "so-lai-ban-hang:layout";
+  const KEY_P = "so-lai-ban-hang:products";
   function showNote(msg) { const n = $("storeNote"); n.hidden = false; n.textContent = msg; }
   function save() {
     try {
       localStorage.setItem(KEY, JSON.stringify(orders));
       localStorage.setItem(KEY_F, JSON.stringify(fields));
       localStorage.setItem(KEY_L, JSON.stringify(layout));
+      localStorage.setItem(KEY_P, JSON.stringify(products));
     } catch (e) { showNote("Trình duyệt không cho lưu (chế độ ẩn danh?). Hãy tải file sao lưu trước khi đóng trang."); throw e; }
   }
   try {
@@ -565,12 +665,15 @@ function readFields_(cfg) {
     if (rawF) fields = JSON.parse(rawF) || [];
     const rawL = localStorage.getItem(KEY_L);
     if (rawL) layout = JSON.parse(rawL) || [];
+    const rawP = localStorage.getItem(KEY_P);
+    if (rawP) products = JSON.parse(rawP) || [];
   } catch (e) { showNote("Không đọc được dữ liệu cũ trong trình duyệt. Nếu có file sao lưu, hãy dùng “Khôi phục từ file”."); }
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
 
   // ----- đồng bộ online: Google Sheets qua Apps Script -----
   const KEY_S = "so-lai-ban-hang:sync";
   const KEY_Q = "so-lai-ban-hang:queue";
+  let oldScript = false;
   let sync = null, queue = [], flushing = false, pulling = false, syncErr = "", offArmed = false, pendingConnect = null;
   try {
     sync = JSON.parse(localStorage.getItem(KEY_S) || "null");
@@ -616,6 +719,8 @@ function readFields_(cfg) {
         const c = parseCfg(j.fields);
         orders = j.orders || []; fields = c.fields;
         if (c.layout.length) layout = c.layout;
+        oldScript = !Array.isArray(j.products);
+        if (!oldScript) products = j.products;
         normLayout(); save(); refreshAll();
       }
       syncErr = "";
@@ -639,22 +744,23 @@ function readFields_(cfg) {
       st.className = "sync-msg" + (syncErr ? " err" : "");
       st.textContent = syncErr
         ? syncErr + (queue.length ? ". " + queue.length + " thay đổi đang chờ, sẽ tự gửi lại khi có mạng." : "")
-        : text + ".";
+        : text + "." + (oldScript ? " Lưu ý: mã Apps Script đang là bản cũ nên danh sách sản phẩm chưa lưu online. Hãy dán mã mới (mục bên dưới) và triển khai phiên bản mới." : "");
       $("syncOffBtn").textContent = offArmed ? (queue.length ? "Còn " + queue.length + " thay đổi chưa lưu online, bấm lần nữa để vẫn tắt" : "Bấm lần nữa để tắt") : "Tắt đồng bộ trên máy này";
     }
   }
   function refreshAll() {
     if (editingId && !orders.some((o) => o.id === editingId)) resetForm();
-    renderFieldList(); renderExtraInputs(); updatePreview(); render();
+    renderFieldList(); renderExtraInputs(); renderProducts(); onSku(true); updatePreview(); render();
   }
   function syncMsg(text, err) { const m = $("syncMsg"); m.hidden = !text; m.textContent = text || ""; m.className = "sync-msg" + (err ? " err" : ""); }
-  function finishConnect(s, o, f, upload, lay) {
+  function finishConnect(s, o, f, upload, lay, prods) {
     sync = s;
     try { localStorage.setItem(KEY_S, JSON.stringify(s)); } catch (e) {}
     orders = o; fields = f; queue = [];
     if (lay && lay.length) layout = lay;
+    if (prods) products = prods;
     normLayout();
-    if (upload) queue.push({ op: "replaceAll", orders, fields: cfgPayload() });
+    if (upload) queue.push({ op: "replaceAll", orders, fields: cfgPayload(), products });
     saveQueue(); save();
     pendingConnect = null; $("syncChoice").hidden = true; syncMsg("");
     $("syncKey").value = "";
@@ -671,10 +777,12 @@ function readFields_(cfg) {
       const j = await call({ action: "load" }, s);
       const c = parseCfg(j.fields);
       const so = j.orders || [], sf = c.fields, sl = c.layout;
-      if (!orders.length && !fields.length) finishConnect(s, so, sf, false, sl);
-      else if (!so.length && !sf.length) finishConnect(s, orders, fields, true, sl.length ? sl : layout);
+      oldScript = !Array.isArray(j.products);
+      const sp = j.products || [];
+      if (!orders.length && !fields.length && !products.length) finishConnect(s, so, sf, false, sl, sp);
+      else if (!so.length && !sf.length && !sp.length) finishConnect(s, orders, fields, true, sl.length ? sl : layout, products);
       else {
-        pendingConnect = { s, so, sf, sl };
+        pendingConnect = { s, so, sf, sl, sp };
         $("syncChoiceMsg").textContent = "Online đang có " + so.length + " đơn, máy này có " + orders.length + " đơn. “Gộp cả hai” giữ tất cả đơn (đơn trùng lấy bản online). “Chỉ dùng dữ liệu online” bỏ dữ liệu trên máy này.";
         $("syncChoice").hidden = false; syncMsg("");
       }
@@ -683,14 +791,16 @@ function readFields_(cfg) {
   });
   $("syncMerge").addEventListener("click", () => {
     if (!pendingConnect) return;
-    const { s, so, sf, sl } = pendingConnect;
+    const { s, so, sf, sl, sp } = pendingConnect;
     const ids = new Set(so.map((o) => o.id));
     const fids = new Set(sf.map((f) => f.id));
-    finishConnect(s, so.concat(orders.filter((o) => !ids.has(o.id))), sf.concat(fields.filter((f) => !fids.has(f.id))), true, sl.length ? sl : layout);
+    const pcodes = new Set(sp.map((p) => p.code.toLowerCase()));
+    finishConnect(s, so.concat(orders.filter((o) => !ids.has(o.id))), sf.concat(fields.filter((f) => !fids.has(f.id))), true, sl.length ? sl : layout,
+      sp.concat(products.filter((p) => !pcodes.has(p.code.toLowerCase()))));
   });
   $("syncUseOnline").addEventListener("click", () => {
     if (!pendingConnect) return;
-    finishConnect(pendingConnect.s, pendingConnect.so, pendingConnect.sf, false, pendingConnect.sl);
+    finishConnect(pendingConnect.s, pendingConnect.so, pendingConnect.sf, false, pendingConnect.sl, pendingConnect.sp);
   });
   $("syncCancel").addEventListener("click", () => { pendingConnect = null; $("syncChoice").hidden = true; });
   $("syncPull").addEventListener("click", () => pull(true));
@@ -781,8 +891,35 @@ function readFields_(cfg) {
   $("form").addEventListener("input", updatePreview);
   $("form").addEventListener("change", updatePreview);
 
+  // Gõ mã SP → tự hiện tên, ảnh; tự điền giá nhập nếu ô trống
+  function onSku(keepName) {
+    const code = $("fSku").value.trim();
+    const p = productByCode(code);
+    setThumb("fImg", p ? p.img : "");
+    if (p) {
+      if (!keepName) $("fName").value = p.name;
+      if (!keepName && !parseMoney($("fCost").value) && p.cost) $("fCost").value = money(p.cost);
+      $("skuHint").hidden = true;
+    } else {
+      $("skuHint").hidden = !code || !shown("sku");
+      $("skuHintMsg").textContent = "Mã “" + code + "” chưa có trong danh sách sản phẩm.";
+    }
+    updatePreview();
+  }
+  $("fSku").addEventListener("input", () => onSku(false));
+  $("skuAdd").addEventListener("click", () => {
+    resetProdForm();
+    $("pCode").value = $("fSku").value.trim();
+    $("pName").value = $("fName").value.trim();
+    $("pCost").value = $("fCost").value;
+    $("prodCard").open = true;
+    $("prodCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("pName").focus();
+  });
+
   function formOrder() {
     return {
+      sku: (productByCode($("fSku").value) || {}).code || $("fSku").value.trim(),
       date: $("fDate").value || today(),
       name: $("fName").value.trim(),
       cost: parseMoney($("fCost").value),
@@ -806,6 +943,8 @@ function readFields_(cfg) {
     editingId = null;
     $("form").reset();
     fillExtra({});
+    setThumb("fImg", "");
+    $("skuHint").hidden = true;
     $("fDate").value = today();
     $("fDone").checked = true;
     $("formTitle").textContent = "Ghi đơn mới";
@@ -837,7 +976,7 @@ function readFields_(cfg) {
       resetForm();
       $("fDate").value = keepDate;
       render();
-      $("fName").focus();
+      (shown("sku") ? $("fSku") : $("fName")).focus();
     } catch (err) {
       toast("Không lưu được: " + (err && err.message ? err.message : "lỗi") + ".");
     }
@@ -848,6 +987,8 @@ function readFields_(cfg) {
     editingId = o.id;
     $("fDate").value = o.date || today();
     $("fName").value = o.name || "";
+    $("fSku").value = o.sku || "";
+    onSku(true);
     $("fCost").value = money(o.cost);
     $("fShip").value = money(o.ship);
     $("fRev").value = money(o.revenue);
@@ -937,7 +1078,7 @@ function readFields_(cfg) {
   function colClass(c) {
     const f = fieldOf(c.key);
     if (f) return f.type === "money" ? "n" : f.type === "check" ? "c" : "";
-    return { cost: "n", ship: "n", revenue: "n", profit: "n" }[c.key] || "";
+    return { cost: "n", ship: "n", revenue: "n", profit: "n", img: "c" }[c.key] || "";
   }
   function cellFor(c, o, p) {
     const f = fieldOf(c.key);
@@ -950,6 +1091,8 @@ function readFields_(cfg) {
     switch (c.key) {
       case "date": return el("td", { className: "date-c", textContent: o.date ? o.date.split("-").reverse().join("/") : "" });
       case "name": return el("td", { className: "name", textContent: o.name || "(không tên)" });
+      case "sku": return el("td", { className: "sku-c", textContent: o.sku || "" });
+      case "img": { const pr = productByCode(o.sku); return el("td", { className: "img-c" }, pr && pr.img ? thumb(pr.img) : ""); }
       case "cost": return el("td", { className: "n", textContent: fmt(o.cost || 0) });
       case "ship": return el("td", { className: "n", textContent: fmt(o.ship || 0) });
       case "revenue": return el("td", { className: "n dim", textContent: fmt(o.revenue || 0) });
@@ -1071,6 +1214,123 @@ function readFields_(cfg) {
   $("nfAdd").addEventListener("click", addField);
   $("nfName").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addField(); } });
 
+  // ----- sản phẩm -----
+  let pEditId = null, pImg = "", confirmProdId = null;
+  function renderSkuList() {
+    const dl = $("skuList");
+    dl.textContent = "";
+    products.forEach((p) => dl.append(el("option", { value: p.code, label: p.name })));
+  }
+  function showPImg() {
+    setThumb("pImgPrev", pImg);
+    $("pImgClear").hidden = !pImg;
+  }
+  function resetProdForm() {
+    pEditId = null; pImg = "";
+    ["pCode", "pName", "pCost", "pUrl"].forEach((id) => ($(id).value = ""));
+    $("pCancel").hidden = true;
+    $("pSave").textContent = "Lưu sản phẩm";
+    showPImg();
+  }
+  function shrinkImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const im = new Image();
+      im.onload = () => {
+        const k = Math.min(1, 200 / Math.max(im.width, im.height));
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(im.width * k));
+        c.height = Math.max(1, Math.round(im.height * k));
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(im, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        let q = 0.8, d = c.toDataURL("image/jpeg", q);
+        while (d.length > 40000 && q > 0.35) { q -= 0.1; d = c.toDataURL("image/jpeg", q); }
+        resolve(d);
+      };
+      im.onerror = () => { URL.revokeObjectURL(url); reject(new Error("bad image")); };
+      im.src = url;
+    });
+  }
+  $("pPick").addEventListener("click", () => $("pFile").click());
+  $("pFile").addEventListener("change", async (e) => {
+    const f = e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    try { pImg = await shrinkImage(f); $("pUrl").value = ""; showPImg(); }
+    catch (err) { toast("Không đọc được ảnh này, thử ảnh khác (JPG/PNG)."); }
+  });
+  $("pUrl").addEventListener("change", () => { pImg = $("pUrl").value.trim(); showPImg(); });
+  $("pImgClear").addEventListener("click", () => { pImg = ""; $("pUrl").value = ""; showPImg(); });
+  $("pCancel").addEventListener("click", resetProdForm);
+  $("pCost").addEventListener("focusout", () => { if ($("pCost").value.trim()) $("pCost").value = parseMoney($("pCost").value).toLocaleString("vi-VN"); });
+  $("pSave").addEventListener("click", () => {
+    const code = $("pCode").value.trim(), name = $("pName").value.trim();
+    if (!code) { toast("Nhập mã sản phẩm"); $("pCode").focus(); return; }
+    if (!name) { toast("Nhập tên sản phẩm"); $("pName").focus(); return; }
+    const dup = productByCode(code);
+    if (dup && dup.id !== pEditId) { toast("Mã “" + code + "” đã có: " + dup.name); return; }
+    if ($("pUrl").value.trim() && !pImg.startsWith("data:")) pImg = $("pUrl").value.trim();
+    const old = pEditId && products.find((p) => p.id === pEditId);
+    const rec = { id: pEditId || newId(), code, name, cost: parseMoney($("pCost").value), img: pImg, updatedAt: new Date().toISOString() };
+    const before = products.slice();
+    if (old) Object.assign(old, rec); else products.push(rec);
+    try { save(); } catch (e) { products = before; toast("Bộ nhớ trình duyệt đầy, không lưu được. Thử ảnh nhỏ hơn hoặc dùng link ảnh."); return; }
+    enqueue({ op: "product_upsert", product: old || rec });
+    toast(old ? "Đã cập nhật sản phẩm " + code : "Đã thêm sản phẩm " + code);
+    resetProdForm();
+    renderProducts(); renderSkuList(); render();
+    if ($("fSku").value.trim().toLowerCase() === code.toLowerCase()) onSku(!!$("fName").value.trim());
+  });
+  function editProduct(p) {
+    pEditId = p.id; pImg = p.img || "";
+    $("pCode").value = p.code; $("pName").value = p.name;
+    $("pCost").value = money(p.cost);
+    $("pUrl").value = /^https?:/.test(pImg) ? pImg : "";
+    $("pCancel").hidden = false;
+    $("pSave").textContent = "Lưu thay đổi";
+    showPImg();
+    $("pCode").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  function deleteProduct(p) {
+    confirmProdId = null;
+    products = products.filter((x) => x !== p);
+    try { save(); } catch (e) {}
+    enqueue({ op: "product_delete", id: p.id });
+    if (pEditId === p.id) resetProdForm();
+    toast("Đã xoá sản phẩm " + p.code);
+    renderProducts(); renderSkuList(); render();
+  }
+  $("pSearch").addEventListener("input", () => renderProducts());
+  function renderProducts() {
+    const box = $("prodList");
+    box.textContent = "";
+    const q = $("pSearch").value.trim().toLowerCase();
+    const list = products
+      .filter((p) => !q || p.code.toLowerCase().includes(q) || (p.name || "").toLowerCase().includes(q))
+      .sort((a, b) => a.code.localeCompare(b.code, "vi", { numeric: true }));
+    if (!products.length) { box.append(el("p", { className: "no-fields", textContent: "Chưa có sản phẩm nào. Điền mã, tên, ảnh ở trên rồi bấm “Lưu sản phẩm”." })); return; }
+    if (!list.length) { box.append(el("p", { className: "no-fields", textContent: "Không tìm thấy sản phẩm khớp “" + q + "”." })); return; }
+    list.forEach((p) => {
+      const row = el("div", { className: "prow" });
+      const info = el("div", { className: "info" },
+        el("span", { className: "code", textContent: p.code }),
+        el("span", { className: "nm", textContent: p.name + (p.cost ? " · nhập " + fmt(p.cost) : "") }));
+      const ctrl = el("div", { className: "ctrl" },
+        btn("Sửa", "", () => editProduct(p)),
+        btn("Xoá", "", () => { confirmProdId = p.id; renderProducts(); }));
+      row.append(thumb(p.img), info, ctrl);
+      if (confirmProdId === p.id) {
+        const used = orders.filter((o) => (o.sku || "").toLowerCase() === p.code.toLowerCase()).length;
+        row.append(el("div", { className: "confirm" },
+          "Xoá sản phẩm “" + p.code + "”?" + (used ? " " + used + " đơn đang dùng mã này vẫn giữ tên, nhưng sẽ không còn ảnh." : ""),
+          btn("Xoá", "btn-danger", () => deleteProduct(p)),
+          btn("Không", "", () => { confirmProdId = null; renderProducts(); })));
+      }
+      box.append(row);
+    });
+  }
+
   // ----- sao lưu / khôi phục -----
   function download(name, text, type) {
     const a = document.createElement("a");
@@ -1080,7 +1340,7 @@ function readFields_(cfg) {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
   $("exportJson").addEventListener("click", () => {
-    download("so-lai-ban-hang-" + today() + ".json", JSON.stringify({ version: 3, fields, layout, orders }, null, 1), "application/json");
+    download("so-lai-ban-hang-" + today() + ".json", JSON.stringify({ version: 4, fields, layout, products, orders }, null, 1), "application/json");
   });
   $("exportCsv").addEventListener("click", () => {
     const q = (v) => '"' + String(v ?? "").replace(/"/g, '""') + '"';
@@ -1089,7 +1349,8 @@ function readFields_(cfg) {
     const val = (c, o) => {
       const f = fieldOf(c.key);
       if (f) { const v = (o.extra || {})[f.id]; return f.type === "check" ? (v ? "Có" : "") : f.type === "money" ? (Number(v) || 0) : (v || ""); }
-      return { date: o.date, name: o.name, cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: o.done ? "Hoàn thành" : "Tồn kho" }[c.key];
+      const pr = productByCode(o.sku);
+      return { date: o.date, sku: o.sku || "", img: pr && /^https?:/.test(pr.img || "") ? pr.img : "", name: o.name, cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: o.done ? "Hoàn thành" : "Tồn kho" }[c.key];
     };
     const lines = [header.map(q).join(",")];
     orders.slice().sort((a, b) => (a.date || "").localeCompare(b.date || "")).forEach((o) => {
@@ -1108,7 +1369,8 @@ function readFields_(cfg) {
       if (!Array.isArray(list)) throw new Error("sai định dạng");
       const fl = !Array.isArray(data) && Array.isArray(data.fields) ? data.fields.filter((x) => x && x.id && x.name && TYPE_LABEL[x.type]) : null;
       const lay = !Array.isArray(data) && Array.isArray(data.layout) ? data.layout : null;
-      pendingImport = { orders: list.filter((o) => o && typeof o === "object").map((o) => ({ ...o, id: o.id || newId() })), fields: fl, layout: lay };
+      const prs = !Array.isArray(data) && Array.isArray(data.products) ? data.products.filter((x) => x && x.id && x.code) : null;
+      pendingImport = { products: prs, orders: list.filter((o) => o && typeof o === "object").map((o) => ({ ...o, id: o.id || newId() })), fields: fl, layout: lay };
       $("importMsg").textContent = "File có " + pendingImport.orders.length + " đơn" + (fl ? " và " + fl.length + " cột tự thêm" : "") + ", sẽ thay toàn bộ " + orders.length + " đơn hiện tại.";
       $("importConfirm").hidden = false;
     } catch (err) { toast("File không đúng định dạng sao lưu của sổ này."); }
@@ -1119,15 +1381,19 @@ function readFields_(cfg) {
     orders = pendingImport.orders;
     if (pendingImport.fields) fields = pendingImport.fields;
     if (pendingImport.layout) layout = pendingImport.layout;
+    if (pendingImport.products) products = pendingImport.products;
     normLayout();
     pendingImport = null; $("importConfirm").hidden = true;
-    try { save(); enqueue({ op: "replaceAll", orders, fields: cfgPayload() }); toast("Đã khôi phục " + orders.length + " đơn"); } catch (e) {}
-    renderFieldList(); renderExtraInputs(); resetForm(); render();
+    try { save(); enqueue({ op: "replaceAll", orders, fields: cfgPayload(), products }); toast("Đã khôi phục " + orders.length + " đơn"); } catch (e) {}
+    renderFieldList(); renderExtraInputs(); renderProducts(); renderSkuList(); resetForm(); render();
   });
 
   normLayout();
   renderFieldList();
   renderExtraInputs();
+  renderSkuList();
+  renderProducts();
+  resetProdForm();
   resetForm();
   render();
   renderSync();
