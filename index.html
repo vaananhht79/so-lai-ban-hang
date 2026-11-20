@@ -39,6 +39,7 @@
   --stock: #e8b45c; --stock-soft: #3a2f1c; color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 body {
   margin: 0;
@@ -47,7 +48,8 @@ body {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 24px 48px;
 }
-.wrap { max-width: 880px; margin: 0 auto; display: grid; gap: 20px; }
+.wrap { max-width: 880px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.wrap > *, .pane > * { min-width: 0; }
 .num { font-variant-numeric: tabular-nums; }
 header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
 h1 { font-family: var(--font-display); font-weight: 600; font-size: 1.6rem; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
@@ -136,11 +138,15 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
 .legend, .hint { font-size: 0.82rem; color: var(--muted); margin: 10px 0 0; }
 
 /* Cài đặt trường */
-details.card > summary { cursor: pointer; font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-details.card > summary::-webkit-details-marker { display: none; }
-details.card > summary::after { content: "Mở"; font-family: var(--font-body); font-size: 0.8rem; font-weight: 500; color: var(--accent); }
-details.card[open] > summary::after { content: "Đóng"; }
-details.card[open] > summary { margin-bottom: 14px; }
+/* Tab */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 2px 10px -6px rgba(0, 0, 0, .25); }
+.tabs button { border: 0; background: transparent; border-radius: 9px; padding: 9px 8px; font-weight: 600; font-size: 0.9rem; line-height: 1.25; color: var(--muted); }
+@media (max-width: 480px) { .tabs button { font-size: 0.8rem; padding: 8px 4px; } }
+.tabs button:hover { color: var(--fg); background: var(--bg); }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--surface); }
+.pane { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.pane[hidden] { display: none; }
 .fields { display: grid; gap: 8px; }
 .frow { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1.3fr) auto; gap: 8px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
 .frow .type { font-size: 0.85rem; color: var(--muted); }
@@ -218,7 +224,7 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
       <p class="sub">Ghi tiền nhập, ship, tiền thực nhận. Đơn chưa xong được tính là tồn kho.</p>
       <span class="badge" id="syncBadge">Chỉ lưu trên máy này</span>
     </div>
-    <div class="month" aria-label="Chọn tháng">
+    <div class="month" id="monthNav" aria-label="Chọn tháng">
       <button id="prevM" type="button" aria-label="Tháng trước">‹</button>
       <span class="month-label" id="monthLabel"></span>
       <button id="nextM" type="button" aria-label="Tháng sau">›</button>
@@ -226,8 +232,15 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
     </div>
   </header>
 
+  <nav class="tabs" role="tablist" aria-label="Các trang">
+    <button type="button" role="tab" data-tab="don-hang" id="tab-don-hang">Đơn hàng</button>
+    <button type="button" role="tab" data-tab="san-pham" id="tab-san-pham">Sản phẩm</button>
+    <button type="button" role="tab" data-tab="cot" id="tab-cot">Cấu hình cột</button>
+    <button type="button" role="tab" data-tab="cau-hinh" id="tab-cau-hinh">Cấu hình web</button>
+  </nav>
   <div id="storeNote" class="note" hidden></div>
 
+  <div class="pane" data-pane="don-hang" role="tabpanel" aria-labelledby="tab-don-hang">
   <section class="summary" aria-label="Tổng kết">
     <div class="stat"><span class="k">Doanh thu</span><span class="v num" id="sRev">0</span><span class="d" id="sRevD">0 đơn hoàn thành</span></div>
     <div class="stat"><span class="k">Chi phí</span><span class="v num" id="sCost">0</span><span class="d" id="sCostD">nhập 0 · ship 0</span></div>
@@ -280,8 +293,10 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
     <p class="legend" id="legend"></p>
   </section>
 
-  <details class="card" id="prodCard">
-    <summary>Sản phẩm</summary>
+  </div>
+  <div class="pane" data-pane="san-pham" role="tabpanel" aria-labelledby="tab-san-pham">
+  <section class="card" id="prodCard">
+    <h2>Sản phẩm</h2>
     <p class="hint" style="margin-top:0">Lưu sẵn mã, tên, ảnh (và giá nhập nếu muốn). Khi ghi đơn chỉ cần gõ mã SP, tên và ảnh tự hiện; giá nhập tự điền nếu ô đang trống.</p>
     <div class="grid" style="margin-top:12px">
       <label class="f"><span>Mã SP</span><input type="text" id="pCode" autocomplete="off" placeholder="VD: AT01"></label>
@@ -306,10 +321,12 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
     <input type="search" class="psearch" id="pSearch" placeholder="Tìm theo mã hoặc tên…" aria-label="Tìm sản phẩm">
     <div class="plist" id="prodList"></div>
     <p class="hint">Ảnh chọn từ máy được thu nhỏ (khoảng 200px) để lưu nhẹ và đồng bộ được.</p>
-  </details>
+  </section>
 
-  <details class="card" id="fieldsCard">
-    <summary>Cột &amp; trường</summary>
+  </div>
+  <div class="pane" data-pane="cot" role="tabpanel" aria-labelledby="tab-cot">
+  <section class="card" id="fieldsCard">
+    <h2>Cột &amp; trường</h2>
     <p class="hint" style="margin-top:0">Ô tích bên trái: hiện/ẩn cột. ↑ ↓: đổi vị trí (áp dụng cho bảng, form nhập và file Excel). Sửa tên ngay trong ô.</p>
     <div class="fields" id="fieldList" style="margin-top:10px"></div>
     <h3 class="sr">Thêm cột mới</h3>
@@ -338,10 +355,12 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
       Khoản trừ vẫn tính cả với đơn tồn kho; khoản cộng chỉ tính khi đơn hoàn thành.
       Cột cố định (ngày, tên hàng, tiền nhập, ship, thực nhận, lãi, trạng thái) không xoá hẳn được vì lãi và tồn kho tính từ chúng, nhưng có thể ẩn đi nếu không dùng. Cột tự thêm thì xoá được.
     </p>
-  </details>
+  </section>
 
-  <details class="card" id="syncCard">
-    <summary>Đồng bộ online (Google Sheets)</summary>
+  </div>
+  <div class="pane" data-pane="cau-hinh" role="tabpanel" aria-labelledby="tab-cau-hinh">
+  <section class="card" id="syncCard">
+    <h2>Đồng bộ online (Google Sheets)</h2>
     <div id="syncOff">
       <p class="hint" style="margin-top:0">Lưu dữ liệu vào một Google Sheet trong Drive của bạn để nhập được trên cả máy tính và điện thoại. Làm phần cài đặt bên dưới một lần, sau đó trên mỗi máy chỉ cần dán link + mật khẩu.</p>
       <div class="sync-form" style="margin-top:12px">
@@ -379,7 +398,7 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
         <button type="button" id="syncOffBtn">Tắt đồng bộ trên máy này</button>
       </div>
     </div>
-  </details>
+  </section>
 
   <section class="card">
     <h2>Sao lưu dữ liệu</h2>
@@ -396,6 +415,7 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
       <p class="hint">Dữ liệu (cả các trường tự thêm) lưu ngay trong trình duyệt của máy này. Nên tải file sao lưu định kỳ; đổi máy/trình duyệt thì dùng “Khôi phục từ file”. Xoá lịch sử duyệt web (dữ liệu trang) sẽ mất sổ.</p>
     </div>
   </section>
+  </div>
 </div>
 <div class="toast" id="toast" hidden></div>
 
@@ -912,8 +932,7 @@ function readFields_(cfg) {
     $("pCode").value = $("fSku").value.trim();
     $("pName").value = $("fName").value.trim();
     $("pCost").value = $("fCost").value;
-    $("prodCard").open = true;
-    $("prodCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    showTab("san-pham");
     $("pName").focus();
   });
 
@@ -1387,6 +1406,33 @@ function readFields_(cfg) {
     try { save(); enqueue({ op: "replaceAll", orders, fields: cfgPayload(), products }); toast("Đã khôi phục " + orders.length + " đơn"); } catch (e) {}
     renderFieldList(); renderExtraInputs(); renderProducts(); renderSkuList(); resetForm(); render();
   });
+
+  // ----- tab -----
+  const TABS = ["don-hang", "san-pham", "cot", "cau-hinh"];
+  function showTab(name, fromHash) {
+    if (!TABS.includes(name)) name = "don-hang";
+    document.querySelectorAll(".pane").forEach((p) => (p.hidden = p.dataset.pane !== name));
+    document.querySelectorAll(".tabs button").forEach((b) => {
+      const on = b.dataset.tab === name;
+      b.setAttribute("aria-selected", String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
+    $("monthNav").hidden = name !== "don-hang";
+    if (!fromHash && location.hash !== "#" + name) {
+      try { history.replaceState(null, "", "#" + name); } catch (e) { location.hash = name; }
+    }
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll(".tabs button").forEach((b) => {
+    b.addEventListener("click", () => showTab(b.dataset.tab));
+    b.addEventListener("keydown", (e) => {
+      const i = TABS.indexOf(b.dataset.tab);
+      const j = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : -1;
+      if (j >= 0 && j < TABS.length) { e.preventDefault(); showTab(TABS[j]); $("tab-" + TABS[j]).focus(); }
+    });
+  });
+  window.addEventListener("hashchange", () => showTab(location.hash.slice(1), true));
+  showTab(location.hash.slice(1), true);
 
   normLayout();
   renderFieldList();
