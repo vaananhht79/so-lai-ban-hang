@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lexend:wght@500;600&display=swap">
 <style>
-/* Layout: một cột kiểu sổ ghi chép — dải tổng kết tháng, form ghi đơn, danh sách đơn theo ngày */
+/* Layout: một cột kiểu sổ ghi chép — dải tổng kết tháng, form ghi đơn, danh sách đơn, cài đặt trường, sao lưu */
 :root {
   --bg: #f4f6f3;
   --surface: #ffffff;
@@ -60,14 +60,16 @@ button {
   border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 12px; cursor: pointer;
 }
 button:hover { border-color: var(--accent); }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: .4; cursor: default; }
+button:disabled:hover { border-color: var(--line); }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 600; padding: 10px 18px; }
 .btn-primary:hover { filter: brightness(1.08); }
-.btn-primary:disabled { opacity: .5; cursor: default; }
+.btn-danger { background: var(--loss); border-color: var(--loss); color: var(--surface); }
 
 /* Tổng kết */
 .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-.stat { background: var(--surface); padding: 14px 16px; display: grid; gap: 2px; }
+.stat { background: var(--surface); padding: 14px 16px; display: grid; gap: 2px; align-content: start; }
 .stat .k { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
 .stat .v { font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; }
 .stat .d { font-size: 0.8rem; color: var(--muted); }
@@ -83,12 +85,20 @@ form { display: grid; gap: 14px; }
 .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .grid .wide { grid-column: span 2; }
 @media (max-width: 640px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid .wide { grid-column: span 2; } }
-label.f { display: grid; gap: 4px; font-size: 0.82rem; color: var(--muted); font-weight: 500; min-width: 0; }
-label.f input {
+.extra-grid { padding-top: 12px; border-top: 1px dashed var(--line); }
+label.f { display: grid; gap: 4px; font-size: 0.82rem; color: var(--muted); font-weight: 500; min-width: 0; align-content: start; }
+label.f > span { overflow-wrap: anywhere; }
+label.f input, .fields select, .fields input[type=text] {
   width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 10px; color: var(--fg); font-size: 0.95rem;
 }
 label.f input.money { text-align: right; font-variant-numeric: tabular-nums; }
 label.f input:disabled { opacity: .45; }
+label.f.checkf { align-content: start; }
+label.f.checkf .box { display: flex; align-items: center; gap: 8px; height: 42px; color: var(--fg); }
+label.f.checkf input { width: 18px; height: 18px; accent-color: var(--accent); }
+.tag { font-size: 0.7rem; font-weight: 600; padding: 0 6px; border-radius: 4px; margin-left: 4px; white-space: nowrap; }
+.tag.minus { background: var(--loss-soft); color: var(--loss); }
+.tag.plus { background: var(--accent-soft); color: var(--accent); }
 .form-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; }
 .check input { width: 18px; height: 18px; accent-color: var(--accent); }
@@ -108,7 +118,9 @@ table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 th.n, td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+th.c, td.c { text-align: center; }
 td.name { min-width: 140px; }
+td.txt { min-width: 90px; max-width: 200px; overflow-wrap: anywhere; }
 td.name .date { display: block; font-size: 0.78rem; color: var(--muted); }
 td.pos { color: var(--gain); font-weight: 600; } td.neg { color: var(--loss); font-weight: 600; }
 tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
@@ -118,14 +130,37 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
 .pill:hover { border-color: currentColor; }
 .acts { white-space: nowrap; text-align: right; }
 .acts button { font-size: 0.8rem; padding: 3px 8px; }
-.acts .del-yes { background: var(--loss); border-color: var(--loss); color: var(--surface); }
 .empty { text-align: center; color: var(--muted); padding: 28px 12px; }
 .note { font-size: 0.85rem; padding: 10px 12px; border-radius: 8px; background: var(--stock-soft); color: var(--stock); }
-.legend { font-size: 0.8rem; color: var(--muted); margin: 10px 0 0; }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-size: 0.88rem; }
-@media (prefers-reduced-motion: no-preference) { .toast { transition: opacity .2s; } }
+.legend, .hint { font-size: 0.82rem; color: var(--muted); margin: 10px 0 0; }
+
+/* Cài đặt trường */
+details.card > summary { cursor: pointer; font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+details.card > summary::-webkit-details-marker { display: none; }
+details.card > summary::after { content: "Mở"; font-family: var(--font-body); font-size: 0.8rem; font-weight: 500; color: var(--accent); }
+details.card[open] > summary::after { content: "Đóng"; }
+details.card[open] > summary { margin-bottom: 14px; }
+.fields { display: grid; gap: 8px; }
+.frow { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1.3fr) auto; gap: 8px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+.frow .type { font-size: 0.85rem; color: var(--muted); }
+.frow .ctrl { display: flex; gap: 4px; justify-content: end; flex-wrap: wrap; }
+.frow .ctrl button { padding: 4px 9px; font-size: 0.82rem; }
+.frow .confirm { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.85rem; color: var(--loss); }
+.frow.new { border-style: dashed; background: var(--bg); }
+.frow.new .ctrl button { padding: 8px 14px; }
+.frow select:disabled { opacity: .4; }
+@media (max-width: 640px) {
+  .frow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .frow .name-cell { grid-column: 1 / -1; }
+  .frow .ctrl { grid-column: 1 / -1; justify-content: start; }
+}
+.no-fields { color: var(--muted); font-size: 0.88rem; margin: 0; }
+
 .backup { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.backup .hint { font-size: 0.82rem; color: var(--muted); flex-basis: 100%; margin: 0; }
+.backup .hint { flex-basis: 100%; margin: 0; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-size: 0.88rem; max-width: calc(100% - 32px); text-align: center; }
+@media (prefers-reduced-motion: no-preference) { .toast { transition: opacity .2s; } }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 </style>
 </head>
 <body>
@@ -147,8 +182,8 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
   <div id="storeNote" class="note" hidden></div>
 
   <section class="summary" aria-label="Tổng kết">
-    <div class="stat"><span class="k">Doanh thu thực nhận</span><span class="v num" id="sRev">0</span><span class="d" id="sRevD">0 đơn hoàn thành</span></div>
-    <div class="stat"><span class="k">Tiền nhập + ship</span><span class="v num" id="sCost">0</span><span class="d" id="sCostD">ship 0</span></div>
+    <div class="stat"><span class="k">Doanh thu</span><span class="v num" id="sRev">0</span><span class="d" id="sRevD">0 đơn hoàn thành</span></div>
+    <div class="stat"><span class="k">Chi phí</span><span class="v num" id="sCost">0</span><span class="d" id="sCostD">nhập 0 · ship 0</span></div>
     <div class="stat profit"><span class="k">Tiền lãi</span><span class="v num" id="sProfit">0</span><span class="d" id="sProfitD">đã trừ tồn kho</span></div>
     <div class="stat stock"><span class="k">Tồn kho</span><span class="v num" id="sStock">0</span><span class="d" id="sStockD">0 đơn chưa xong</span></div>
   </section>
@@ -165,6 +200,7 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
         <label class="f"><span>Doanh thu thực nhận</span><input class="money" inputmode="numeric" id="fRev" placeholder="0"></label>
         <label class="f"><span>Tiền lãi</span><input class="money" id="fProfit" disabled value="0"></label>
       </div>
+      <div class="grid extra-grid" id="fExtra" hidden></div>
       <div class="form-foot">
         <label class="check"><input type="checkbox" id="fDone" checked> Đơn hoàn thành</label>
         <span class="preview" id="preview"></span>
@@ -187,13 +223,43 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Đơn</th><th class="n">Nhập</th><th class="n">Ship</th><th class="n">Thực nhận</th><th class="n">Lãi</th><th>Trạng thái</th><th></th></tr></thead>
+        <thead><tr id="thead"></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
-    <p class="empty" id="empty">Đang tải sổ…</p>
-    <p class="legend">Bấm vào ô trạng thái để chuyển đơn giữa “Hoàn thành” và “Tồn kho”. Đơn tồn kho có lãi âm bằng tiền nhập + ship.</p>
+    <p class="empty" id="empty"></p>
+    <p class="legend" id="legend"></p>
   </section>
+
+  <details class="card" id="fieldsCard">
+    <summary>Trường tự thêm</summary>
+    <div class="fields" id="fieldList"></div>
+    <div class="fields" style="margin-top:8px">
+      <div class="frow new">
+        <div class="name-cell"><label class="sr" for="nfName">Tên trường mới</label><input type="text" id="nfName" placeholder="Tên trường, VD: Phí sàn"></div>
+        <div><label class="sr" for="nfType">Loại</label>
+          <select id="nfType">
+            <option value="money">Tiền</option>
+            <option value="text">Chữ</option>
+            <option value="check">Ô tích</option>
+          </select>
+        </div>
+        <div><label class="sr" for="nfEffect">Ảnh hưởng tới lãi</label>
+          <select id="nfEffect">
+            <option value="minus">Trừ vào lãi</option>
+            <option value="plus">Cộng vào lãi</option>
+            <option value="none">Chỉ ghi lại</option>
+          </select>
+        </div>
+        <div class="ctrl"><button type="button" class="btn-primary" id="nfAdd">Thêm trường</button></div>
+      </div>
+    </div>
+    <p class="hint">
+      Trường <b>Tiền</b> có thể trừ vào lãi (phí sàn, bao bì, quảng cáo…), cộng vào lãi (khách bo thêm, phụ thu…) hoặc chỉ ghi lại để xem.
+      Khoản trừ vẫn tính cả với đơn tồn kho; khoản cộng chỉ tính khi đơn hoàn thành.
+      Các trường cố định (tiền nhập, ship, thực nhận, hoàn thành) không xoá được vì lãi và tồn kho tính từ chúng.
+    </p>
+  </details>
 
   <section class="card">
     <h2>Sao lưu dữ liệu</h2>
@@ -207,7 +273,7 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
         <button type="button" class="btn-primary" id="importYes">Thay thế</button>
         <button type="button" id="importNo">Huỷ</button>
       </span>
-      <p class="hint">Dữ liệu lưu ngay trong trình duyệt của máy này. Nên tải file sao lưu định kỳ; đổi máy/trình duyệt thì dùng “Khôi phục từ file”. Xoá lịch sử duyệt web (dữ liệu trang) sẽ mất sổ.</p>
+      <p class="hint">Dữ liệu (cả các trường tự thêm) lưu ngay trong trình duyệt của máy này. Nên tải file sao lưu định kỳ; đổi máy/trình duyệt thì dùng “Khôi phục từ file”. Xoá lịch sử duyệt web (dữ liệu trang) sẽ mất sổ.</p>
     </div>
   </section>
 </div>
@@ -216,7 +282,9 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
+  const el = (tag, props, ...kids) => { const e = document.createElement(tag); Object.assign(e, props || {}); kids.forEach((k) => e.append(k)); return e; };
   const fmt = (n) => (n < 0 ? "−" : "") + Math.abs(Math.round(n)).toLocaleString("vi-VN");
+  const money = (n) => (n ? n.toLocaleString("vi-VN") : "");
   const parseMoney = (s) => {
     s = String(s || "").trim().toLowerCase();
     let mult = 1;
@@ -225,28 +293,108 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
     const n = parseFloat(s.replace(/\./g, "").replace(",", "."));
     return isFinite(n) ? Math.round(n * mult) : 0;
   };
-  // Lãi: hoàn thành = thực nhận − nhập − ship; chưa xong (tồn kho) = −(nhập + ship)
-  const profitOf = (o) => o.done ? (o.revenue || 0) - (o.cost || 0) - (o.ship || 0) : -((o.cost || 0) + (o.ship || 0));
   const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const TYPE_LABEL = { money: "Tiền", text: "Chữ", check: "Ô tích" };
+  const EFFECT_LABEL = { minus: "trừ lãi", plus: "cộng lãi", none: "" };
 
   let orders = [];
+  let fields = [];           // [{id, name, type: money|text|check, effect: minus|plus|none}]
   let editingId = null;
   let confirmDelId = null;
+  let confirmFieldId = null;
   let filter = "all";
   const now = new Date();
   let month = { y: now.getFullYear(), m: now.getMonth() + 1, all: false };
 
-  function toast(msg) {
-    const t = $("toast"); t.textContent = msg; t.hidden = false;
-    clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 2200);
+  // ----- tính tiền -----
+  // Hoàn thành: thực nhận + khoản cộng − nhập − ship − khoản trừ
+  // Tồn kho:    −(nhập + ship + khoản trừ)
+  function extraSum(o, effect) {
+    let s = 0;
+    fields.forEach((f) => { if (f.type === "money" && f.effect === effect) s += Number((o.extra || {})[f.id]) || 0; });
+    return s;
+  }
+  function profitOf(o) {
+    const base = (o.cost || 0) + (o.ship || 0) + extraSum(o, "minus");
+    return o.done ? (o.revenue || 0) + extraSum(o, "plus") - base : -base;
   }
 
-  // ----- tiền: tự thêm dấu chấm khi gõ -----
-  document.querySelectorAll("input.money:not(:disabled)").forEach((inp) => {
-    inp.addEventListener("blur", () => { if (inp.value.trim()) inp.value = parseMoney(inp.value).toLocaleString("vi-VN"); });
-    inp.addEventListener("input", updatePreview);
+  function toast(msg) {
+    const t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 2400);
+  }
+
+  // ----- lưu trữ -----
+  const KEY = "so-lai-ban-hang:orders";
+  const KEY_F = "so-lai-ban-hang:fields";
+  function showNote(msg) { const n = $("storeNote"); n.hidden = false; n.textContent = msg; }
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(orders));
+      localStorage.setItem(KEY_F, JSON.stringify(fields));
+    } catch (e) { showNote("Trình duyệt không cho lưu (chế độ ẩn danh?). Hãy tải file sao lưu trước khi đóng trang."); throw e; }
+  }
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) orders = JSON.parse(raw) || [];
+    const rawF = localStorage.getItem(KEY_F);
+    if (rawF) fields = JSON.parse(rawF) || [];
+  } catch (e) { showNote("Không đọc được dữ liệu cũ trong trình duyệt. Nếu có file sao lưu, hãy dùng “Khôi phục từ file”."); }
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
+  // ----- form ghi đơn -----
+  function renderExtraInputs() {
+    const box = $("fExtra");
+    const keep = readExtra();
+    box.textContent = "";
+    box.hidden = !fields.length;
+    fields.forEach((f) => {
+      const id = "fx_" + f.id;
+      const title = el("span", { textContent: f.name });
+      if (f.type === "money" && f.effect !== "none") title.append(el("span", { className: "tag " + f.effect, textContent: f.effect === "minus" ? "−" : "+" }));
+      let lab;
+      if (f.type === "check") {
+        const inp = el("input", { type: "checkbox", id });
+        inp.checked = !!keep[f.id];
+        lab = el("label", { className: "f checkf" }, title, el("span", { className: "box" }, inp, "Có"));
+      } else {
+        const inp = el("input", { type: "text", id, placeholder: f.type === "money" ? "0" : "" });
+        if (f.type === "money") { inp.className = "money"; inp.inputMode = "numeric"; inp.value = money(keep[f.id]); }
+        else inp.value = keep[f.id] || "";
+        lab = el("label", { className: "f" + (f.type === "text" ? " wide" : "") }, title, inp);
+      }
+      box.append(lab);
+    });
+  }
+  function readExtra() {
+    const x = {};
+    fields.forEach((f) => {
+      const inp = $("fx_" + f.id);
+      if (!inp) return;
+      if (f.type === "check") x[f.id] = inp.checked;
+      else if (f.type === "money") x[f.id] = parseMoney(inp.value);
+      else x[f.id] = inp.value.trim();
+    });
+    return x;
+  }
+  function fillExtra(extra) {
+    fields.forEach((f) => {
+      const inp = $("fx_" + f.id);
+      if (!inp) return;
+      const v = (extra || {})[f.id];
+      if (f.type === "check") inp.checked = !!v;
+      else if (f.type === "money") inp.value = money(Number(v) || 0);
+      else inp.value = v || "";
+    });
+  }
+
+  $("form").addEventListener("focusout", (e) => {
+    const inp = e.target;
+    if (inp.classList && inp.classList.contains("money") && !inp.disabled && inp.value.trim()) inp.value = parseMoney(inp.value).toLocaleString("vi-VN");
   });
-  $("fDone").addEventListener("change", updatePreview);
+  $("form").addEventListener("input", updatePreview);
+  $("form").addEventListener("change", updatePreview);
 
   function formOrder() {
     return {
@@ -256,12 +404,12 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
       ship: parseMoney($("fShip").value),
       revenue: parseMoney($("fRev").value),
       done: $("fDone").checked,
+      extra: readExtra(),
     };
   }
   function updatePreview() {
     const o = formOrder();
     const p = profitOf(o);
-    $("fRev").disabled = false;
     $("fProfit").value = fmt(p);
     $("fProfit").style.color = p < 0 ? "var(--loss)" : p > 0 ? "var(--gain)" : "";
     $("preview").innerHTML = o.done
@@ -272,6 +420,7 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
   function resetForm() {
     editingId = null;
     $("form").reset();
+    fillExtra({});
     $("fDate").value = today();
     $("fDone").checked = true;
     $("formTitle").textContent = "Ghi đơn mới";
@@ -280,38 +429,50 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
     updatePreview();
   }
 
-  $("form").addEventListener("submit", async (e) => {
+  $("form").addEventListener("submit", (e) => {
     e.preventDefault();
     const o = formOrder();
-    if (!o.cost && !o.ship && !o.revenue) { toast("Nhập ít nhất một khoản tiền"); return; }
-    $("saveBtn").disabled = true;
+    const hasExtraMoney = Object.values(o.extra).some((v) => typeof v === "number" && v);
+    if (!o.cost && !o.ship && !o.revenue && !hasExtraMoney) { toast("Nhập ít nhất một khoản tiền"); return; }
     try {
       if (editingId) {
         const old = orders.find((x) => x.id === editingId);
-        Object.assign(old, o, { updatedAt: new Date().toISOString() });
+        Object.assign(old, o, { extra: { ...(old.extra || {}), ...o.extra }, updatedAt: new Date().toISOString() });
         save();
-        render();
         toast("Đã cập nhật đơn");
       } else {
-        const rec = { ...o, createdAt: new Date().toISOString() };
-        orders.push({ ...rec, id: newId() });
+        orders.push({ ...o, id: newId(), createdAt: new Date().toISOString() });
         save();
-        render();
         toast("Đã lưu đơn");
       }
       const keepDate = $("fDate").value;
       resetForm();
       $("fDate").value = keepDate;
+      render();
       $("fName").focus();
     } catch (err) {
       toast("Không lưu được: " + (err && err.message ? err.message : "lỗi") + ".");
-    } finally { $("saveBtn").disabled = false; }
+    }
   });
   $("cancelEdit").addEventListener("click", resetForm);
 
-  function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function startEdit(o) {
+    editingId = o.id;
+    $("fDate").value = o.date || today();
+    $("fName").value = o.name || "";
+    $("fCost").value = money(o.cost);
+    $("fShip").value = money(o.ship);
+    $("fRev").value = money(o.revenue);
+    $("fDone").checked = !!o.done;
+    fillExtra(o.extra);
+    $("formTitle").textContent = "Sửa đơn";
+    $("saveBtn").textContent = "Lưu thay đổi";
+    $("cancelEdit").hidden = false;
+    updatePreview();
+    $("form").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 
-  // ----- tháng -----
+  // ----- tháng & lọc -----
   const inMonth = (o) => month.all || (o.date || "").slice(0, 7) === month.y + "-" + String(month.m).padStart(2, "0");
   function shiftMonth(d) {
     month.all = false;
@@ -323,7 +484,6 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
   $("prevM").addEventListener("click", () => shiftMonth(-1));
   $("nextM").addEventListener("click", () => shiftMonth(1));
   $("allM").addEventListener("click", () => { month.all = !month.all; render(); });
-
   document.querySelectorAll(".filters button").forEach((b) => b.addEventListener("click", () => {
     filter = b.dataset.f;
     document.querySelectorAll(".filters button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
@@ -335,20 +495,28 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
     $("monthLabel").textContent = month.all ? "Mọi tháng" : "Tháng " + month.m + "/" + month.y;
     $("allM").setAttribute("aria-pressed", String(month.all));
     const scope = orders.filter(inMonth);
-    let rev = 0, cost = 0, ship = 0, profit = 0, stock = 0, nDone = 0, nStock = 0;
+    let rev = 0, plus = 0, cost = 0, ship = 0, other = 0, profit = 0, stock = 0, nDone = 0, nStock = 0;
     scope.forEach((o) => {
-      cost += o.cost || 0; ship += o.ship || 0; profit += profitOf(o);
-      if (o.done) { rev += o.revenue || 0; nDone++; } else { stock += (o.cost || 0); nStock++; }
+      cost += o.cost || 0; ship += o.ship || 0; other += extraSum(o, "minus"); profit += profitOf(o);
+      if (o.done) { rev += o.revenue || 0; plus += extraSum(o, "plus"); nDone++; } else { stock += (o.cost || 0); nStock++; }
     });
-    $("sRev").textContent = fmt(rev);
-    $("sRevD").textContent = nDone + " đơn hoàn thành";
-    $("sCost").textContent = fmt(cost + ship);
-    $("sCostD").textContent = "nhập " + fmt(cost) + " · ship " + fmt(ship);
+    $("sRev").textContent = fmt(rev + plus);
+    $("sRevD").textContent = nDone + " đơn hoàn thành" + (plus ? " · cộng thêm " + fmt(plus) : "");
+    $("sCost").textContent = fmt(cost + ship + other);
+    $("sCostD").textContent = "nhập " + fmt(cost) + " · ship " + fmt(ship) + (other ? " · khác " + fmt(other) : "");
     $("sProfit").textContent = fmt(profit);
     $("sProfit").className = "v num " + (profit < 0 ? "neg" : "pos");
     $("sProfitD").textContent = nStock ? "đã trừ " + nStock + " đơn tồn kho" : "tất cả đơn đã xong";
     $("sStock").textContent = fmt(stock);
     $("sStockD").textContent = nStock + " đơn chưa xong (tiền nhập)";
+
+    // tiêu đề bảng
+    const th = $("thead");
+    th.textContent = "";
+    const head = (t, c) => th.append(el("th", { className: c || "", textContent: t }));
+    head("Đơn"); head("Nhập", "n"); head("Ship", "n"); head("Thực nhận", "n");
+    fields.forEach((f) => head(f.name, f.type === "money" ? "n" : f.type === "check" ? "c" : ""));
+    head("Lãi", "n"); head("Trạng thái"); head("");
 
     const list = scope
       .filter((o) => filter === "all" || (filter === "done" ? o.done : !o.done))
@@ -358,80 +526,134 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
     tb.textContent = "";
     list.forEach((o) => {
       const p = profitOf(o);
-      const tr = document.createElement("tr");
-      if (!o.done) tr.className = "pending";
+      const tr = el("tr", { className: o.done ? "" : "pending" });
       const d = o.date ? o.date.split("-").reverse().join("/") : "";
-      tr.innerHTML =
-        "<td class='name'><span class='nm'></span><span class='date'>" + d + "</span></td>" +
-        "<td class='n'>" + fmt(o.cost || 0) + "</td>" +
-        "<td class='n'>" + fmt(o.ship || 0) + "</td>" +
-        "<td class='n dim'>" + fmt(o.revenue || 0) + "</td>" +
-        "<td class='n " + (p < 0 ? "neg" : "pos") + "'>" + fmt(p) + "</td>" +
-        "<td><button type='button' class='pill " + (o.done ? "done" : "stock") + "' data-act='toggle'>" + (o.done ? "✓ Hoàn thành" : "Tồn kho") + "</button></td>" +
-        "<td class='acts'></td>";
-      tr.querySelector(".nm").textContent = o.name || "(không tên)";
-      tr.querySelector("[data-act=toggle]").addEventListener("click", () => toggleDone(o));
-      const acts = tr.querySelector(".acts");
+      tr.append(el("td", { className: "name" }, o.name || "(không tên)", el("span", { className: "date", textContent: d })));
+      tr.append(el("td", { className: "n", textContent: fmt(o.cost || 0) }));
+      tr.append(el("td", { className: "n", textContent: fmt(o.ship || 0) }));
+      tr.append(el("td", { className: "n dim", textContent: fmt(o.revenue || 0) }));
+      fields.forEach((f) => {
+        const v = (o.extra || {})[f.id];
+        if (f.type === "money") tr.append(el("td", { className: "n" + (f.effect === "plus" && !o.done ? " dim" : ""), textContent: v ? fmt(Number(v)) : "" }));
+        else if (f.type === "check") tr.append(el("td", { className: "c", textContent: v ? "✓" : "" }));
+        else tr.append(el("td", { className: "txt", textContent: v || "" }));
+      });
+      tr.append(el("td", { className: "n " + (p < 0 ? "neg" : "pos"), textContent: fmt(p) }));
+      const pill = el("button", { type: "button", className: "pill " + (o.done ? "done" : "stock"), textContent: o.done ? "✓ Hoàn thành" : "Tồn kho" });
+      pill.addEventListener("click", () => toggleDone(o));
+      tr.append(el("td", {}, pill));
+      const acts = el("td", { className: "acts" });
       if (confirmDelId === o.id) {
-        acts.append(btn("Xoá thật", "del-yes", () => del(o)), " ", btn("Không", "", () => { confirmDelId = null; render(); }));
+        acts.append(btn("Xoá thật", "btn-danger", () => del(o)), " ", btn("Không", "", () => { confirmDelId = null; render(); }));
       } else {
         acts.append(btn("Sửa", "", () => startEdit(o)), " ", btn("Xoá", "", () => { confirmDelId = o.id; render(); }));
       }
-      tb.appendChild(tr);
+      tr.append(acts);
+      tb.append(tr);
     });
     const empty = $("empty");
-    if (loading) { empty.hidden = false; empty.textContent = "Đang tải sổ…"; }
-    else if (!list.length) {
+    if (!list.length) {
       empty.hidden = false;
       empty.textContent = orders.length
         ? "Không có đơn nào trong " + (month.all ? "sổ" : "tháng " + month.m + "/" + month.y) + " theo bộ lọc này."
         : "Chưa có đơn nào. Điền form phía trên rồi bấm “Lưu đơn” để ghi đơn đầu tiên.";
     } else empty.hidden = true;
+    const hasMinus = fields.some((f) => f.type === "money" && f.effect === "minus");
+    $("legend").textContent = "Bấm vào ô trạng thái để chuyển đơn giữa “Hoàn thành” và “Tồn kho”. Đơn tồn kho có lãi âm bằng tiền nhập + ship" + (hasMinus ? " + các khoản trừ." : ".");
   }
-  function btn(label, cls, fn) { const b = document.createElement("button"); b.type = "button"; b.textContent = label; if (cls) b.className = cls; b.addEventListener("click", fn); return b; }
+  function btn(label, cls, fn) { const b = el("button", { type: "button", textContent: label }); if (cls) b.className = cls; b.addEventListener("click", fn); return b; }
 
-  async function toggleDone(o) {
-    o.done = !o.done; render();
+  function toggleDone(o) {
+    o.done = !o.done;
     try { o.updatedAt = new Date().toISOString(); save(); toast(o.done ? "Đã chuyển sang hoàn thành" : "Đã chuyển vào tồn kho"); }
-    catch (e) { o.done = !o.done; render(); toast("Không cập nhật được, thử lại sau."); }
+    catch (e) { o.done = !o.done; toast("Không cập nhật được."); }
+    render();
   }
-  async function del(o) {
+  function del(o) {
     confirmDelId = null;
+    const before = orders;
     try {
       orders = orders.filter((x) => x !== o);
       save();
       if (editingId === o.id) resetForm();
-      render(); toast("Đã xoá đơn");
-    } catch (e) { render(); toast("Không xoá được, thử lại sau."); }
-  }
-  function startEdit(o) {
-    editingId = o.id;
-    $("fDate").value = o.date || today();
-    $("fName").value = o.name || "";
-    $("fCost").value = o.cost ? o.cost.toLocaleString("vi-VN") : "";
-    $("fShip").value = o.ship ? o.ship.toLocaleString("vi-VN") : "";
-    $("fRev").value = o.revenue ? o.revenue.toLocaleString("vi-VN") : "";
-    $("fDone").checked = !!o.done;
-    $("formTitle").textContent = "Sửa đơn";
-    $("saveBtn").textContent = "Lưu thay đổi";
-    $("cancelEdit").hidden = false;
-    updatePreview();
-    $("form").scrollIntoView({ behavior: "smooth", block: "center" });
+      toast("Đã xoá đơn");
+    } catch (e) { orders = before; toast("Không xoá được."); }
+    render();
   }
 
-  // ----- lưu trữ: localStorage trong trình duyệt -----
-  const KEY = "so-lai-ban-hang:orders";
-  let loading = false;
-  function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(orders)); }
-    catch (e) { showNote("Trình duyệt không cho lưu (chế độ ẩn danh?). Hãy tải file sao lưu trước khi đóng trang."); throw e; }
+  // ----- cài đặt trường tự thêm -----
+  function effectSelect(value, onChange, disabled) {
+    const s = el("select");
+    [["minus", "Trừ vào lãi"], ["plus", "Cộng vào lãi"], ["none", "Chỉ ghi lại"]].forEach(([v, t]) => s.append(el("option", { value: v, textContent: t })));
+    s.value = value || "none";
+    s.disabled = !!disabled;
+    if (onChange) s.addEventListener("change", () => onChange(s.value));
+    return s;
   }
-  function showNote(msg) { const n = $("storeNote"); n.hidden = false; n.textContent = msg; }
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) orders = JSON.parse(raw) || [];
-  } catch (e) { showNote("Không đọc được dữ liệu cũ trong trình duyệt. Nếu có file sao lưu, hãy dùng “Khôi phục từ file”."); }
-  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  function renderFieldList() {
+    const box = $("fieldList");
+    box.textContent = "";
+    if (!fields.length) { box.append(el("p", { className: "no-fields", textContent: "Chưa có trường nào. Thêm trường ở dòng bên dưới, VD: Phí sàn (Tiền, trừ vào lãi), Kênh bán (Chữ), Đã đóng gói (Ô tích)." })); }
+    fields.forEach((f, i) => {
+      const row = el("div", { className: "frow" });
+      const name = el("input", { type: "text", value: f.name, ariaLabel: "Tên trường" });
+      name.setAttribute("aria-label", "Tên trường");
+      name.addEventListener("change", () => {
+        const v = name.value.trim();
+        if (!v) { name.value = f.name; toast("Tên trường không được để trống"); return; }
+        f.name = v; commitFields("Đã đổi tên trường");
+      });
+      const eff = f.type === "money"
+        ? effectSelect(f.effect, (v) => { f.effect = v; commitFields("Đã đổi cách tính " + f.name); })
+        : el("span", { className: "type", textContent: "—" });
+      if (f.type === "money") eff.setAttribute("aria-label", "Ảnh hưởng tới lãi");
+      const up = btn("↑", "", () => moveField(i, -1)); up.disabled = i === 0; up.setAttribute("aria-label", "Đưa lên");
+      const down = btn("↓", "", () => moveField(i, 1)); down.disabled = i === fields.length - 1; down.setAttribute("aria-label", "Đưa xuống");
+      const rm = btn("Xoá", "", () => { confirmFieldId = f.id; renderFieldList(); });
+      row.append(
+        el("div", { className: "name-cell" }, name),
+        el("span", { className: "type", textContent: TYPE_LABEL[f.type] }),
+        eff,
+        el("div", { className: "ctrl" }, up, down, rm)
+      );
+      if (confirmFieldId === f.id) {
+        const used = orders.filter((o) => { const v = (o.extra || {})[f.id]; return v !== undefined && v !== "" && v !== 0 && v !== false; }).length;
+        row.append(el("div", { className: "confirm" },
+          "Xoá trường “" + f.name + "”" + (used ? " và dữ liệu của nó trong " + used + " đơn" : "") + "?",
+          btn("Xoá trường", "btn-danger", () => removeField(f)),
+          btn("Không", "", () => { confirmFieldId = null; renderFieldList(); })));
+      }
+      box.append(row);
+    });
+  }
+  function commitFields(msg) {
+    try { save(); if (msg) toast(msg); } catch (e) { toast("Không lưu được cài đặt."); }
+    renderFieldList(); renderExtraInputs(); updatePreview(); render();
+  }
+  function moveField(i, d) {
+    const j = i + d;
+    if (j < 0 || j >= fields.length) return;
+    [fields[i], fields[j]] = [fields[j], fields[i]];
+    commitFields();
+  }
+  function removeField(f) {
+    confirmFieldId = null;
+    fields = fields.filter((x) => x !== f);
+    orders.forEach((o) => { if (o.extra) delete o.extra[f.id]; });
+    commitFields("Đã xoá trường " + f.name);
+  }
+  $("nfType").addEventListener("change", () => { $("nfEffect").disabled = $("nfType").value !== "money"; });
+  function addField() {
+    const name = $("nfName").value.trim();
+    if (!name) { toast("Nhập tên trường trước"); $("nfName").focus(); return; }
+    if (fields.some((f) => f.name.toLowerCase() === name.toLowerCase())) { toast("Đã có trường tên “" + name + "”"); return; }
+    const type = $("nfType").value;
+    fields.push({ id: newId(), name, type, effect: type === "money" ? $("nfEffect").value : "none" });
+    $("nfName").value = "";
+    commitFields("Đã thêm trường " + name);
+  }
+  $("nfAdd").addEventListener("click", addField);
+  $("nfName").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addField(); } });
 
   // ----- sao lưu / khôi phục -----
   function download(name, text, type) {
@@ -442,13 +664,17 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
   $("exportJson").addEventListener("click", () => {
-    download("so-lai-ban-hang-" + today() + ".json", JSON.stringify({ version: 1, orders }, null, 1), "application/json");
+    download("so-lai-ban-hang-" + today() + ".json", JSON.stringify({ version: 2, fields, orders }, null, 1), "application/json");
   });
   $("exportCsv").addEventListener("click", () => {
     const q = (v) => '"' + String(v ?? "").replace(/"/g, '""') + '"';
-    const lines = [["Ngày", "Tên hàng", "Tiền nhập", "Tiền ship", "Doanh thu thực nhận", "Tiền lãi", "Trạng thái"].map(q).join(",")];
+    const header = ["Ngày", "Tên hàng", "Tiền nhập", "Tiền ship", "Doanh thu thực nhận"]
+      .concat(fields.map((f) => f.name + (f.type === "money" && f.effect !== "none" ? " (" + EFFECT_LABEL[f.effect] + ")" : "")))
+      .concat(["Tiền lãi", "Trạng thái"]);
+    const lines = [header.map(q).join(",")];
     orders.slice().sort((a, b) => (a.date || "").localeCompare(b.date || "")).forEach((o) => {
-      lines.push([o.date, o.name, o.cost || 0, o.ship || 0, o.revenue || 0, profitOf(o), o.done ? "Hoàn thành" : "Tồn kho"].map(q).join(","));
+      const ex = fields.map((f) => { const v = (o.extra || {})[f.id]; return f.type === "check" ? (v ? "Có" : "") : f.type === "money" ? (Number(v) || 0) : (v || ""); });
+      lines.push([o.date, o.name, o.cost || 0, o.ship || 0, o.revenue || 0].concat(ex, [profitOf(o), o.done ? "Hoàn thành" : "Tồn kho"]).map(q).join(","));
     });
     download("so-lai-ban-hang-" + today() + ".csv", "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
   });
@@ -461,19 +687,24 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
       const data = JSON.parse(await f.text());
       const list = Array.isArray(data) ? data : data.orders;
       if (!Array.isArray(list)) throw new Error("sai định dạng");
-      pendingImport = list.filter((o) => o && typeof o === "object").map((o) => ({ ...o, id: o.id || newId() }));
-      $("importMsg").textContent = "File có " + pendingImport.length + " đơn, sẽ thay toàn bộ " + orders.length + " đơn hiện tại.";
+      const fl = !Array.isArray(data) && Array.isArray(data.fields) ? data.fields.filter((x) => x && x.id && x.name && TYPE_LABEL[x.type]) : null;
+      pendingImport = { orders: list.filter((o) => o && typeof o === "object").map((o) => ({ ...o, id: o.id || newId() })), fields: fl };
+      $("importMsg").textContent = "File có " + pendingImport.orders.length + " đơn" + (fl ? " và " + fl.length + " trường tự thêm" : "") + ", sẽ thay toàn bộ " + orders.length + " đơn hiện tại.";
       $("importConfirm").hidden = false;
     } catch (err) { toast("File không đúng định dạng sao lưu của sổ này."); }
   });
   $("importNo").addEventListener("click", () => { pendingImport = null; $("importConfirm").hidden = true; });
   $("importYes").addEventListener("click", () => {
     if (!pendingImport) return;
-    orders = pendingImport; pendingImport = null; $("importConfirm").hidden = true;
+    orders = pendingImport.orders;
+    if (pendingImport.fields) fields = pendingImport.fields;
+    pendingImport = null; $("importConfirm").hidden = true;
     try { save(); toast("Đã khôi phục " + orders.length + " đơn"); } catch (e) {}
-    render();
+    renderFieldList(); renderExtraInputs(); resetForm(); render();
   });
 
+  renderFieldList();
+  renderExtraInputs();
   resetForm();
   render();
 })();
