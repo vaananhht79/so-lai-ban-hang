@@ -208,6 +208,19 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
 .prow .ctrl { display: flex; gap: 4px; flex-wrap: wrap; justify-content: end; }
 .prow .ctrl button { font-size: 0.8rem; padding: 3px 8px; }
 .prow .confirm { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.85rem; color: var(--loss); }
+/* Nhập file & lịch sử */
+.imp-preview { margin-top: 12px; padding: 12px; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 8px; display: grid; gap: 10px; }
+.imp-msg { margin: 0; font-size: 0.9rem; }
+.imp-err { margin: 0; padding-left: 18px; font-size: 0.82rem; color: var(--loss); display: grid; gap: 2px; }
+.uplist { display: grid; gap: 6px; margin-top: 12px; }
+.uprow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 0.86rem; }
+.uprow .fn { font-weight: 600; overflow-wrap: anywhere; }
+.uprow .meta { color: var(--muted); font-size: 0.8rem; grid-column: 1; }
+.uprow .st { grid-row: 1 / 3; grid-column: 2; text-align: right; font-size: 0.8rem; }
+.uprow .st a { color: var(--accent); font-weight: 600; }
+.uprow .st .err { color: var(--loss); }
+.uprow .st .wait { color: var(--stock); }
+.kind { font-size: 0.7rem; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--bg); border: 1px solid var(--line); margin-right: 6px; color: var(--muted); }
 .backup { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .backup .hint { flex-basis: 100%; margin: 0; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-size: 0.88rem; max-width: calc(100% - 32px); text-align: center; }
@@ -293,6 +306,25 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
     <p class="legend" id="legend"></p>
   </section>
 
+  <section class="card imp">
+    <h2>Nhập đơn từ file</h2>
+    <p class="hint" style="margin-top:0">Tải file mẫu, điền đơn vào (mỗi dòng một đơn) rồi chọn file để nhập. Cột trong file mẫu theo đúng các cột đang hiện ở “Cấu hình cột”. Dòng trùng hệt đơn đã có sẽ được bỏ qua để tránh nhập 2 lần.</p>
+    <div class="right" style="margin-top:12px">
+      <button type="button" id="impOTpl">Tải file mẫu</button>
+      <button type="button" class="btn-primary" id="impOPick">Chọn file Excel / CSV</button>
+      <input type="file" id="impOFile" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>
+    </div>
+    <div class="imp-preview" id="impOBox" hidden>
+      <p class="imp-msg" id="impOMsg"></p>
+      <ul class="imp-err" id="impOErr" hidden></ul>
+      <label class="check" id="impODupWrap" hidden><input type="checkbox" id="impODup"> Vẫn nhập cả dòng trùng</label>
+      <div class="right">
+        <button type="button" class="btn-primary" id="impOYes">Nhập</button>
+        <button type="button" id="impONo">Huỷ</button>
+      </div>
+    </div>
+  </section>
+
   </div>
   <div class="pane" data-pane="san-pham" role="tabpanel" aria-labelledby="tab-san-pham">
   <section class="card" id="prodCard">
@@ -321,6 +353,25 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
     <input type="search" class="psearch" id="pSearch" placeholder="Tìm theo mã hoặc tên…" aria-label="Tìm sản phẩm">
     <div class="plist" id="prodList"></div>
     <p class="hint">Ảnh chọn từ máy được thu nhỏ (khoảng 200px) để lưu nhẹ và đồng bộ được.</p>
+  </section>
+
+  <section class="card imp">
+    <h2>Nhập sản phẩm từ file</h2>
+    <p class="hint" style="margin-top:0">Tải file mẫu, điền Mã SP, Tên SP, Giá nhập, Link ảnh (nếu có) rồi chọn file. Mã đã có sẽ được cập nhật theo file (ô để trống thì giữ nguyên), mã mới sẽ được thêm vào. Ảnh dán thẳng vào ô Excel không đọc được, hãy dùng link ảnh hoặc thêm ảnh sau.</p>
+    <div class="right" style="margin-top:12px">
+      <button type="button" id="impPTpl">Tải file mẫu</button>
+      <button type="button" class="btn-primary" id="impPPick">Chọn file Excel / CSV</button>
+      <input type="file" id="impPFile" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>
+    </div>
+    <div class="imp-preview" id="impPBox" hidden>
+      <p class="imp-msg" id="impPMsg"></p>
+      <ul class="imp-err" id="impPErr" hidden></ul>
+      <label class="check" id="impPDupWrap" hidden><input type="checkbox" id="impPDup"> Vẫn nhập cả dòng trùng</label>
+      <div class="right">
+        <button type="button" class="btn-primary" id="impPYes">Nhập</button>
+        <button type="button" id="impPNo">Huỷ</button>
+      </div>
+    </div>
   </section>
 
   </div>
@@ -383,6 +434,7 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
         <li>Xoá hết mã có sẵn, dán đoạn mã dưới đây vào. Sửa dòng <code>const SECRET = "doi-mat-khau-nay"</code> thành mật khẩu riêng của bạn. Bấm biểu tượng lưu 💾.
           <div class="codebox"><button type="button" id="copyCode">Sao chép</button><pre id="gsView"></pre></div>
         </li>
+        <li>Ở thanh trên cùng của Apps Script, chọn hàm <b>capQuyen</b> rồi bấm <b>Chạy</b> (Run). Google hỏi quyền: chọn tài khoản → <b>Nâng cao → Đi tới … (không an toàn)</b> → <b>Cho phép</b>. Bước này cho phép lưu file upload vào Drive.</li>
         <li>Bấm <b>Triển khai → Tùy chọn triển khai mới</b> (Deploy → New deployment). Bấm bánh răng ⚙ chọn <b>Ứng dụng web</b> (Web app).</li>
         <li><b>Thực thi dưới dạng: Tôi</b> (Execute as: Me). <b>Người có quyền truy cập: Bất kỳ ai</b> (Anyone). Bấm <b>Triển khai</b>.</li>
         <li>Google hỏi cấp quyền: chọn tài khoản → nếu hiện “Google chưa xác minh ứng dụng này” bấm <b>Nâng cao → Đi tới … (không an toàn)</b> → <b>Cho phép</b>. Đây là mã của chính bạn nên an toàn.</li>
@@ -395,9 +447,19 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
       <p class="sync-msg" id="syncStatus"></p>
       <div class="right" style="margin-top:10px">
         <button type="button" id="syncPull">Tải dữ liệu mới nhất</button>
+        <button type="button" id="copyCode2">Sao chép mã Apps Script mới nhất</button>
         <button type="button" id="syncOffBtn">Tắt đồng bộ trên máy này</button>
       </div>
     </div>
+  </section>
+
+  <section class="card">
+    <div class="list-head">
+      <h2>Lịch sử upload</h2>
+      <button type="button" id="upRefresh">Tải lại</button>
+    </div>
+    <p class="hint" style="margin-top:6px">Mỗi lần nhập file, file gốc được lưu vào Google Drive (thư mục “Sổ lãi bán hàng - File upload” cạnh bảng tính) và ghi lại ở tab LichSuUpload. Cần bật đồng bộ online.</p>
+    <div class="uplist" id="upList"></div>
   </section>
 
   <section class="card">
@@ -426,6 +488,12 @@ const HEAD = ["Mã", "Ngày", "Tên hàng", "Tiền nhập", "Tiền ship", "Th�
 const FMT = ["@", "@", "@", "#,##0", "#,##0", "#,##0", "General", "@", "@", "@", "@"];
 const PHEAD = ["ID", "Mã SP", "Tên SP", "Giá nhập", "Ảnh", "Sửa lúc"];
 const PFMT = ["@", "@", "@", "#,##0", "@", "@"];
+const UHEAD = ["ID", "Thời gian", "Loại", "Tên file", "Số dòng", "Thêm mới", "Cập nhật", "Bỏ qua", "Link Drive"];
+const UFMT = ["@", "@", "@", "@", "0", "0", "0", "0", "@"];
+const VERSION = 3;
+
+// Chạy hàm này 1 lần trong trình soạn thảo (chọn capQuyen → Chạy) để cấp quyền Drive
+function capQuyen() { DriveApp.getRootFolder(); SpreadsheetApp.getActive().getName(); }
 
 function doGet(e) { return handle_((e && e.parameter) || {}); }
 function doPost(e) {
@@ -443,13 +511,15 @@ function handle_(req) {
     const sh = sheet_("DonHang", HEAD);
     const cfg = sheet_("CaiDat", null);
     const ps = sheet_("SanPham", PHEAD);
-    if (req.action === "load") return out_({ ok: true, orders: readOrders_(sh), fields: readFields_(cfg), products: readProducts_(ps) });
+    const us = sheet_("LichSuUpload", UHEAD);
+    if (req.action === "load") return out_({ ok: true, version: VERSION, orders: readOrders_(sh), fields: readFields_(cfg), products: readProducts_(ps), uploads: readUploads_(us) });
+    if (req.action === "upload") return out_(saveUpload_(us, req));
     if (req.action === "ops") {
       const errors = [];
       (req.ops || []).forEach(function (op) {
         try { apply_(sh, cfg, ps, op); } catch (err) { errors.push(String(op.op) + ": " + err); }
       });
-      return out_({ ok: true, errors: errors });
+      return out_({ ok: true, version: VERSION, errors: errors });
     }
     return out_({ ok: false, error: "bad_action" });
   } finally {
@@ -512,6 +582,10 @@ function apply_(sh, cfg, ps, op) {
   } else if (op.op === "product_upsert" && op.product && op.product.id) {
     const r = findRow_(ps, op.product.id);
     writeRows_(ps, r || ps.getLastRow() + 1, [prodRow_(op.product)], PFMT);
+  } else if (op.op === "orders_upsert_many") {
+    upsertMany_(sh, op.orders || [], rowOf_, FMT);
+  } else if (op.op === "products_upsert_many") {
+    upsertMany_(ps, op.products || [], prodRow_, PFMT);
   } else if (op.op === "product_delete" && op.id) {
     const r = findRow_(ps, op.id);
     if (r) ps.deleteRow(r);
@@ -544,6 +618,55 @@ function readOrders_(sh) {
         done: r[6] === true || String(r[6]).toUpperCase() === "TRUE",
         extra: extra, createdAt: String(r[8]), updatedAt: String(r[9]), sku: String(r[10] || "")
       };
+    });
+}
+
+function upsertMany_(sh, items, toRow, fmt) {
+  if (!items.length) return;
+  const n = sh.getLastRow() - 1;
+  const pos = {};
+  if (n > 0) sh.getRange(2, 1, n, 1).getValues().forEach(function (r, i) { pos[String(r[0])] = i + 2; });
+  const fresh = [];
+  items.forEach(function (it) {
+    if (!it || !it.id) return;
+    const r = pos[String(it.id)];
+    if (r) writeRows_(sh, r, [toRow(it)], fmt); else fresh.push(toRow(it));
+  });
+  writeRows_(sh, sh.getLastRow() + 1, fresh, fmt);
+}
+
+function uploadFolder_() {
+  const name = "Sổ lãi bán hàng - File upload";
+  const parents = DriveApp.getFileById(SpreadsheetApp.getActive().getId()).getParents();
+  const parent = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
+  const it = parent.getFoldersByName(name);
+  return it.hasNext() ? it.next() : parent.createFolder(name);
+}
+
+function saveUpload_(us, req) {
+  let url = "";
+  if (req.data) {
+    const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH-mm");
+    const blob = Utilities.newBlob(Utilities.base64Decode(req.data), req.mime || "application/octet-stream", stamp + " - " + String(req.fileName || "file"));
+    url = uploadFolder_().createFile(blob).getUrl();
+  }
+  const s = req.summary || {};
+  writeRows_(us, us.getLastRow() + 1, [[String(req.id || ""), String(req.time || new Date().toISOString()),
+    req.kind === "orders" ? "Đơn hàng" : "Sản phẩm", safe_(req.fileName), Number(s.rows) || 0, Number(s.added) || 0,
+    Number(s.updated) || 0, Number(s.skipped) || 0, url]], UFMT);
+  return { ok: true, version: VERSION, url: url };
+}
+
+function readUploads_(us) {
+  const n = us.getLastRow() - 1;
+  if (n < 1) return [];
+  const start = Math.max(2, us.getLastRow() - 99);
+  return us.getRange(start, 1, us.getLastRow() - start + 1, UHEAD.length).getValues()
+    .filter(function (r) { return r[0] !== ""; })
+    .reverse()
+    .map(function (r) {
+      return { id: String(r[0]), time: String(r[1]), kind: r[2] === "Đơn hàng" ? "orders" : "products", fileName: String(r[3]),
+        rows: Number(r[4]) || 0, added: Number(r[5]) || 0, updated: Number(r[6]) || 0, skipped: Number(r[7]) || 0, url: String(r[8] || "") };
     });
 }
 
@@ -669,6 +792,10 @@ function readFields_(cfg) {
   const KEY_F = "so-lai-ban-hang:fields";
   const KEY_L = "so-lai-ban-hang:layout";
   const KEY_P = "so-lai-ban-hang:products";
+  const KEY_U = "so-lai-ban-hang:uploads";
+  let uploads = [];
+  try { uploads = JSON.parse(localStorage.getItem(KEY_U) || "[]") || []; } catch (e) {}
+  function saveUploads() { try { localStorage.setItem(KEY_U, JSON.stringify(uploads.slice(0, 200))); } catch (e) {} }
   function showNote(msg) { const n = $("storeNote"); n.hidden = false; n.textContent = msg; }
   function save() {
     try {
@@ -693,17 +820,18 @@ function readFields_(cfg) {
   // ----- đồng bộ online: Google Sheets qua Apps Script -----
   const KEY_S = "so-lai-ban-hang:sync";
   const KEY_Q = "so-lai-ban-hang:queue";
-  let oldScript = false;
+  let serverVer = 0;             // 0 = chưa biết; 1 = bản đầu; 2 = có sản phẩm; 3 = có nhập file + Drive
+  const verOf = (j) => j.version || (Array.isArray(j.products) ? 2 : 1);
   let sync = null, queue = [], flushing = false, pulling = false, syncErr = "", offArmed = false, pendingConnect = null;
   try {
     sync = JSON.parse(localStorage.getItem(KEY_S) || "null");
     queue = JSON.parse(localStorage.getItem(KEY_Q) || "[]") || [];
   } catch (e) {}
   function saveQueue() { try { localStorage.setItem(KEY_Q, JSON.stringify(queue)); } catch (e) {} }
-  async function call(body, s) {
+  async function call(body, s, ms) {
     s = s || sync;
     const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), 30000);
+    const t = setTimeout(() => ctl.abort(), ms || 30000);
     try {
       const r = await fetch(s.url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ ...body, key: s.key }), signal: ctl.signal });
       const j = await r.json();
@@ -739,8 +867,9 @@ function readFields_(cfg) {
         const c = parseCfg(j.fields);
         orders = j.orders || []; fields = c.fields;
         if (c.layout.length) layout = c.layout;
-        oldScript = !Array.isArray(j.products);
-        if (!oldScript) products = j.products;
+        serverVer = verOf(j);
+        if (Array.isArray(j.products)) products = j.products;
+        if (Array.isArray(j.uploads)) mergeUploads(j.uploads);
         normLayout(); save(); refreshAll();
       }
       syncErr = "";
@@ -764,7 +893,7 @@ function readFields_(cfg) {
       st.className = "sync-msg" + (syncErr ? " err" : "");
       st.textContent = syncErr
         ? syncErr + (queue.length ? ". " + queue.length + " thay đổi đang chờ, sẽ tự gửi lại khi có mạng." : "")
-        : text + "." + (oldScript ? " Lưu ý: mã Apps Script đang là bản cũ nên danh sách sản phẩm chưa lưu online. Hãy dán mã mới (mục bên dưới) và triển khai phiên bản mới." : "");
+        : text + "." + (serverVer && serverVer < 3 ? " Lưu ý: mã Apps Script đang là bản cũ nên " + (serverVer < 2 ? "sản phẩm và " : "") + "file upload chưa lưu được lên Drive. Bấm “Sao chép mã Apps Script mới nhất”, dán đè vào Apps Script (giữ dòng SECRET của bạn), chạy hàm capQuyen 1 lần rồi triển khai phiên bản mới." : "");
       $("syncOffBtn").textContent = offArmed ? (queue.length ? "Còn " + queue.length + " thay đổi chưa lưu online, bấm lần nữa để vẫn tắt" : "Bấm lần nữa để tắt") : "Tắt đồng bộ trên máy này";
     }
   }
@@ -797,7 +926,8 @@ function readFields_(cfg) {
       const j = await call({ action: "load" }, s);
       const c = parseCfg(j.fields);
       const so = j.orders || [], sf = c.fields, sl = c.layout;
-      oldScript = !Array.isArray(j.products);
+      serverVer = verOf(j);
+      if (Array.isArray(j.uploads)) mergeUploads(j.uploads);
       const sp = j.products || [];
       if (!orders.length && !fields.length && !products.length) finishConnect(s, so, sf, false, sl, sp);
       else if (!so.length && !sf.length && !sp.length) finishConnect(s, orders, fields, true, sl.length ? sl : layout, products);
@@ -836,6 +966,7 @@ function readFields_(cfg) {
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") pull(false); });
 
   $("gsView").textContent = $("gsCode").textContent.trim();
+  $("copyCode2").addEventListener("click", () => $("copyCode").click());
   $("copyCode").addEventListener("click", async () => {
     const text = $("gsView").textContent;
     try { await navigator.clipboard.writeText(text); toast("Đã sao chép mã"); }
@@ -1407,6 +1538,343 @@ function readFields_(cfg) {
     renderFieldList(); renderExtraInputs(); renderProducts(); renderSkuList(); resetForm(); render();
   });
 
+  // ----- nhập từ file Excel / CSV -----
+  let xlsxP = null;
+  function loadXLSX() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (!xlsxP) xlsxP = new Promise((resolve, reject) => {
+      const sc = document.createElement("script");
+      sc.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+      sc.onload = () => resolve(window.XLSX);
+      sc.onerror = () => { xlsxP = null; sc.remove(); reject(new Error("Không tải được bộ đọc Excel, kiểm tra mạng rồi thử lại")); };
+      document.head.append(sc);
+    });
+    return xlsxP;
+  }
+  const norm = (s) => String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "d").toLowerCase().replace(/\(.*?\)/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  const ALIAS = {
+    date: ["ngay", "ngay ban", "date"],
+    sku: ["ma sp", "ma san pham", "sku", "ma hang"],
+    name: ["ten hang", "ten sp", "ten san pham", "san pham", "ghi chu"],
+    cost: ["tien nhap", "gia nhap", "von"],
+    ship: ["tien ship", "ship", "van chuyen", "tien van chuyen", "phi ship"],
+    revenue: ["thuc nhan", "doanh thu", "doanh thu thuc nhan", "tien ve"],
+    status: ["trang thai", "hoan thanh", "don hoan thanh"],
+  };
+  const P_ALIAS = {
+    code: ["ma sp", "ma", "ma san pham", "sku", "ma hang"],
+    name: ["ten sp", "ten san pham", "ten", "ten hang"],
+    cost: ["gia nhap", "tien nhap", "von"],
+    img: ["link anh", "anh", "hinh", "hinh anh", "url anh", "image"],
+  };
+  // Cột trong file mẫu đơn hàng: theo cột đang hiện (bỏ Ảnh, Tiền lãi vì tự tính)
+  function orderTemplateCols() {
+    const cols = [{ key: "date", header: colLabel(layout.find((c) => c.key === "date") || { key: "date" }) }];
+    layout.forEach((c) => {
+      if (c.key === "date" || c.key === "img" || c.key === "profit" || c.show === false) return;
+      cols.push({ key: c.key, header: colLabel(c) });
+    });
+    return cols;
+  }
+  function orderHeaderMap(headRow) {
+    const want = {};
+    layout.forEach((c) => {
+      const f = fieldOf(c.key);
+      const names = f ? [f.name] : [colLabel(c), FIXED[c.key].label].concat(ALIAS[c.key] || []);
+      names.forEach((n) => { const k = norm(n); if (k && !(k in want)) want[k] = c.key; });
+    });
+    const map = {};
+    headRow.forEach((h, i) => { const k = want[norm(h)]; if (k && !(k in map)) map[k] = i; });
+    return map;
+  }
+  function productHeaderMap(headRow) {
+    const map = {};
+    headRow.forEach((h, i) => {
+      const n = norm(h);
+      Object.keys(P_ALIAS).forEach((k) => { if (!(k in map) && P_ALIAS[k].includes(n)) map[k] = i; });
+    });
+    return map;
+  }
+  function parseDateCell(v) {
+    if (typeof v === "number" && v > 20000 && v < 80000) return new Date(Math.round((v - 25569) * 86400000)).toISOString().slice(0, 10);
+    const s = String(v == null ? "" : v).trim();
+    let y, m, d, r;
+    if ((r = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/))) { y = +r[1]; m = +r[2]; d = +r[3]; }
+    else if ((r = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/))) { d = +r[1]; m = +r[2]; y = +r[3]; if (y < 100) y += 2000; }
+    else return "";
+    if (m < 1 || m > 12 || d < 1 || d > 31) return "";
+    return y + "-" + String(m).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+  }
+  const moneyCell = (v) => typeof v === "number" ? Math.round(v) : parseMoney(v);
+  function boolCell(v, dflt) {
+    const n = norm(v);
+    if (!n) return dflt;
+    if (["co", "x", "1", "true", "yes", "ok", "hoan thanh", "da xong", "xong", "roi", "v"].includes(n)) return true;
+    if (["khong", "0", "false", "no", "ton kho", "chua", "chua xong", "k"].includes(n)) return false;
+    return dflt;
+  }
+  async function readRows(file) {
+    const X = await loadXLSX();
+    const buf = await file.arrayBuffer();
+    const isText = /\.(csv|txt)$/i.test(file.name);
+    const wb = X.read(buf, isText ? { type: "array", raw: true, codepage: 65001 } : { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    return X.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
+  }
+  // Tìm dòng tiêu đề trong 10 dòng đầu
+  function findHeader(rows, mapper, need) {
+    for (let i = 0; i < Math.min(10, rows.length); i++) {
+      const map = mapper(rows[i] || []);
+      if (need.every((k) => k in map)) return { at: i, map };
+    }
+    return null;
+  }
+  const sig = (o) => [o.date, (o.sku || "").toLowerCase(), (o.name || "").trim().toLowerCase(), o.cost || 0, o.ship || 0, o.revenue || 0].join("|");
+
+  async function parseOrdersFile(file) {
+    const rows = await readRows(file);
+    const h = findHeader(rows, orderHeaderMap, ["date"]);
+    if (!h) throw new Error("Không thấy cột “Ngày” trong file. Hãy dùng file mẫu.");
+    const { at, map } = h;
+    const res = { file, rows: [], dupFlags: [], errors: [], total: 0 };
+    const have = {};
+    orders.forEach((o) => { const k = sig(o); have[k] = (have[k] || 0) + 1; });
+    for (let i = at + 1; i < rows.length; i++) {
+      const r = rows[i] || [];
+      const get = (k) => (k in map ? r[map[k]] : "");
+      if (r.every((c) => String(c).trim() === "")) continue;
+      res.total++;
+      const date = parseDateCell(get("date"));
+      if (!date) { res.errors.push("Dòng " + (i + 1) + ": ngày “" + get("date") + "” không đọc được (VD đúng: 20/11/2026)"); continue; }
+      const typed = String(get("sku")).trim();
+      const pr = productByCode(typed);
+      const o = {
+        date,
+        sku: pr ? pr.code : typed,
+        name: String(get("name")).trim() || (pr ? pr.name : ""),
+        cost: "cost" in map && String(get("cost")).trim() !== "" ? moneyCell(get("cost")) : (pr && pr.cost ? pr.cost : 0),
+        ship: moneyCell(get("ship")),
+        revenue: moneyCell(get("revenue")),
+        done: boolCell(get("status"), true),
+        extra: {},
+      };
+      fields.forEach((f) => {
+        const k = "f:" + f.id;
+        if (!(k in map)) return;
+        const v = get(k);
+        o.extra[f.id] = f.type === "money" ? moneyCell(v) : f.type === "check" ? boolCell(v, false) : String(v).trim();
+      });
+      if (!o.cost && !o.ship && !o.revenue && !o.sku && !o.name) { res.errors.push("Dòng " + (i + 1) + ": không có mã SP, tên hàng hay số tiền nào"); continue; }
+      const k = sig(o);
+      const dup = (have[k] || 0) > 0;
+      if (dup) have[k]--;
+      res.rows.push(o); res.dupFlags.push(dup);
+    }
+    return res;
+  }
+  async function parseProductsFile(file) {
+    const rows = await readRows(file);
+    const h = findHeader(rows, productHeaderMap, ["code"]);
+    if (!h) throw new Error("Không thấy cột “Mã SP” trong file. Hãy dùng file mẫu.");
+    const { at, map } = h;
+    const res = { file, rows: [], errors: [], total: 0, added: 0, updated: 0 };
+    const seen = new Set();
+    for (let i = at + 1; i < rows.length; i++) {
+      const r = rows[i] || [];
+      const get = (k) => (k in map ? String(r[map[k]] == null ? "" : r[map[k]]).trim() : "");
+      if (r.every((c) => String(c).trim() === "")) continue;
+      res.total++;
+      const code = get("code");
+      if (!code) { res.errors.push("Dòng " + (i + 1) + ": thiếu mã SP"); continue; }
+      if (seen.has(code.toLowerCase())) { res.errors.push("Dòng " + (i + 1) + ": mã “" + code + "” lặp lại trong file, bỏ qua"); continue; }
+      const old = productByCode(code);
+      const name = get("name");
+      if (!old && !name) { res.errors.push("Dòng " + (i + 1) + ": mã mới “" + code + "” thiếu tên SP"); continue; }
+      const img = get("img");
+      if (img && !/^https?:\/\//i.test(img)) { res.errors.push("Dòng " + (i + 1) + ": link ảnh phải bắt đầu bằng http(s)://, đã bỏ qua ảnh"); }
+      seen.add(code.toLowerCase());
+      res.rows.push({ code, name, cost: "cost" in map && get("cost") !== "" ? moneyCell(r[map.cost]) : null, img: /^https?:\/\//i.test(img) ? img : "", old });
+      old ? res.updated++ : res.added++;
+    }
+    return res;
+  }
+
+  const imp = { orders: null, products: null };
+  const PFX = { orders: "impO", products: "impP" };
+  function renderImp(kind) {
+    const P = PFX[kind], r = imp[kind];
+    $(P + "Box").hidden = !r;
+    if (!r) return;
+    const errs = $(P + "Err");
+    errs.textContent = "";
+    r.errors.slice(0, 8).forEach((e) => errs.append(el("li", { textContent: e })));
+    if (r.errors.length > 8) errs.append(el("li", { textContent: "… và " + (r.errors.length - 8) + " lỗi khác" }));
+    errs.hidden = !r.errors.length;
+    let n, msg;
+    if (kind === "orders") {
+      const dups = r.dupFlags.filter(Boolean).length;
+      const withDup = $("impODup").checked;
+      n = withDup ? r.rows.length : r.rows.length - dups;
+      msg = "File “" + r.file.name + "”: " + r.total + " dòng. " + n + " đơn sẽ được nhập" +
+        (dups ? " · " + dups + " dòng trùng hệt đơn đã có" + (withDup ? " (vẫn nhập)" : " (bỏ qua)") : "") +
+        (r.errors.length ? " · " + r.errors.length + " dòng lỗi" : "") + ".";
+      $("impODupWrap").hidden = !dups;
+      $("impOYes").textContent = "Nhập " + n + " đơn";
+    } else {
+      n = r.rows.length;
+      msg = "File “" + r.file.name + "”: " + r.total + " dòng. " + r.added + " sản phẩm mới · " + r.updated + " sản phẩm cập nhật" + (r.errors.length ? " · " + r.errors.length + " dòng có lỗi" : "") + ".";
+      $("impPYes").textContent = "Nhập " + n + " sản phẩm";
+    }
+    $(P + "Msg").textContent = msg;
+    $(P + "Yes").disabled = !n;
+  }
+  function applyOrders() {
+    const r = imp.orders;
+    const withDup = $("impODup").checked;
+    const now = new Date().toISOString();
+    const add = r.rows.filter((o, i) => withDup || !r.dupFlags[i]).map((o) => ({ ...o, id: newId(), createdAt: now }));
+    orders.push(...add);
+    try { save(); } catch (e) { orders.splice(orders.length - add.length); toast("Bộ nhớ trình duyệt đầy, không nhập được."); return; }
+    if (serverVer >= 3) enqueue({ op: "orders_upsert_many", orders: add });
+    else add.forEach((o) => enqueue({ op: "upsert", order: o }));
+    const skipped = r.rows.length - add.length + r.errors.length;
+    imp.orders = null; renderImp("orders"); render();
+    toast("Đã nhập " + add.length + " đơn");
+    recordUpload("orders", r.file, { rows: r.total, added: add.length, updated: 0, skipped });
+  }
+  function applyProducts() {
+    const r = imp.products;
+    const now = new Date().toISOString();
+    const changed = [];
+    r.rows.forEach((x) => {
+      if (x.old) {
+        if (x.name) x.old.name = x.name;
+        if (x.cost !== null) x.old.cost = x.cost;
+        if (x.img) x.old.img = x.img;
+        x.old.updatedAt = now;
+        changed.push(x.old);
+      } else {
+        const p = { id: newId(), code: x.code, name: x.name, cost: x.cost || 0, img: x.img, updatedAt: now };
+        products.push(p); changed.push(p);
+      }
+    });
+    try { save(); } catch (e) { toast("Bộ nhớ trình duyệt đầy, không nhập được."); return; }
+    if (serverVer >= 3) enqueue({ op: "products_upsert_many", products: changed });
+    else changed.forEach((p) => enqueue({ op: "product_upsert", product: p }));
+    imp.products = null; renderImp("products");
+    renderProducts(); renderSkuList(); render();
+    toast("Đã nhập " + changed.length + " sản phẩm");
+    recordUpload("products", r.file, { rows: r.total, added: r.added, updated: r.updated, skipped: r.errors.length });
+  }
+  async function downloadTemplate(kind) {
+    const X = await loadXLSX();
+    const wb = X.utils.book_new();
+    let headers, guide, name;
+    if (kind === "orders") {
+      const cols = orderTemplateCols();
+      headers = cols.map((c) => c.header);
+      const desc = (c) => {
+        const f = fieldOf(c.key);
+        if (f) return f.type === "money" ? ["Không", "Số tiền (" + ({ minus: "trừ vào lãi", plus: "cộng vào lãi", none: "chỉ ghi lại" }[f.effect]) + ")", "5000"]
+          : f.type === "check" ? ["Không", "Có / Không", "Có"] : ["Không", "Chữ", "Shopee"];
+        return {
+          date: ["Có", "Ngày bán, dạng ngày/tháng/năm", "20/11/2026"],
+          sku: ["Không", "Mã SP. Nếu mã có trong danh sách sản phẩm, để trống Tên hàng / Tiền nhập sẽ tự lấy từ sản phẩm", "AT01"],
+          name: ["Không", "Tên hàng hoặc ghi chú", "Áo thun trắng M - chị Lan"],
+          cost: ["Không", "Tiền nhập, VD 85000 hoặc 85k", "85000"],
+          ship: ["Không", "Tiền vận chuyển", "20000"],
+          revenue: ["Không", "Doanh thu thực nhận", "150000"],
+          status: ["Không", "Có / Không (hoặc Hoàn thành / Tồn kho). Để trống = đơn hoàn thành", "Có"],
+        }[c.key] || ["Không", "", ""];
+      };
+      guide = [["Cột", "Bắt buộc", "Cách điền", "Ví dụ"]].concat(cols.map((c) => [c.header].concat(desc(c))));
+      name = "mau-nhap-don-hang.xlsx";
+    } else {
+      headers = ["Mã SP", "Tên SP", "Giá nhập", "Link ảnh"];
+      guide = [["Cột", "Bắt buộc", "Cách điền", "Ví dụ"],
+        ["Mã SP", "Có", "Mã riêng của sản phẩm. Mã đã có sẽ được cập nhật", "AT01"],
+        ["Tên SP", "Có với mã mới", "Tên sản phẩm", "Áo thun trắng size M"],
+        ["Giá nhập", "Không", "Giá nhập mặc định, tự điền khi ghi đơn", "85000"],
+        ["Link ảnh", "Không", "Link ảnh bắt đầu bằng https://. Ảnh dán thẳng vào ô không đọc được", "https://…/ao.jpg"]];
+      name = "mau-nhap-san-pham.xlsx";
+    }
+    const ws = X.utils.aoa_to_sheet([headers]);
+    ws["!cols"] = headers.map((h) => ({ wch: Math.max(14, String(h).length + 6) }));
+    X.utils.book_append_sheet(wb, ws, kind === "orders" ? "Đơn hàng" : "Sản phẩm");
+    const wg = X.utils.aoa_to_sheet(guide);
+    wg["!cols"] = [{ wch: 18 }, { wch: 14 }, { wch: 70 }, { wch: 26 }];
+    X.utils.book_append_sheet(wb, wg, "Hướng dẫn");
+    X.writeFile(wb, name);
+  }
+  ["orders", "products"].forEach((kind) => {
+    const P = PFX[kind];
+    $(P + "Tpl").addEventListener("click", () => downloadTemplate(kind).catch((e) => toast(e.message)));
+    $(P + "Pick").addEventListener("click", () => $(P + "File").click());
+    $(P + "File").addEventListener("change", async (e) => {
+      const f = e.target.files[0]; e.target.value = "";
+      if (!f) return;
+      $(P + "Pick").disabled = true;
+      try {
+        imp[kind] = await (kind === "orders" ? parseOrdersFile(f) : parseProductsFile(f));
+        if (kind === "orders") $("impODup").checked = false;
+        renderImp(kind);
+      } catch (err) { imp[kind] = null; renderImp(kind); toast(err.message || "Không đọc được file này"); }
+      $(P + "Pick").disabled = false;
+    });
+    $(P + "Yes").addEventListener("click", () => { if (imp[kind]) (kind === "orders" ? applyOrders : applyProducts)(); });
+    $(P + "No").addEventListener("click", () => { imp[kind] = null; renderImp(kind); });
+  });
+  $("impODup").addEventListener("change", () => renderImp("orders"));
+
+  // ----- lịch sử upload (lưu file lên Drive) -----
+  function fileToB64(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(",")[1] || "");
+      r.onerror = () => reject(new Error("Không đọc được file"));
+      r.readAsDataURL(file);
+    });
+  }
+  async function recordUpload(kind, file, summary) {
+    const u = { id: newId(), time: new Date().toISOString(), kind, fileName: file.name, ...summary, url: "", status: sync ? "saving" : "local" };
+    uploads.unshift(u); saveUploads(); renderUploads();
+    if (!sync) return;
+    try {
+      if (serverVer && serverVer < 3) throw new Error("Mã Apps Script bản cũ chưa hỗ trợ lưu file lên Drive");
+      if (file.size > 8e6) throw new Error("File lớn hơn 8MB nên không gửi lên Drive");
+      const data = await fileToB64(file);
+      const j = await call({ action: "upload", id: u.id, time: u.time, kind, fileName: file.name, mime: file.type || "application/octet-stream", data, summary }, null, 90000);
+      if (!j.version && !("url" in j)) throw new Error("Mã Apps Script bản cũ chưa hỗ trợ lưu file lên Drive");
+      u.url = j.url || ""; u.status = "ok";
+    } catch (e) { u.status = "error"; u.err = e.message === "bad_action" ? "Mã Apps Script bản cũ chưa hỗ trợ lưu file lên Drive" : e.message; }
+    saveUploads(); renderUploads();
+  }
+  function mergeUploads(server) {
+    const ids = new Set(server.map((u) => u.id));
+    const localOnly = uploads.filter((u) => !ids.has(u.id) && u.status !== "ok");
+    uploads = server.map((u) => ({ ...u, status: "ok" })).concat(localOnly).sort((a, b) => String(b.time).localeCompare(String(a.time)));
+    saveUploads(); renderUploads();
+  }
+  function renderUploads() {
+    const box = $("upList");
+    box.textContent = "";
+    if (!uploads.length) { box.append(el("p", { className: "no-fields", textContent: "Chưa có lần nhập file nào." })); return; }
+    uploads.slice(0, 100).forEach((u) => {
+      const t = new Date(u.time);
+      const when = isNaN(t) ? String(u.time) : t.toLocaleDateString("vi-VN") + " " + t.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+      const st = el("div", { className: "st" });
+      if (u.url) st.append(el("a", { href: u.url, target: "_blank", rel: "noopener", textContent: "Mở file trên Drive" }));
+      else if (u.status === "saving") st.append(el("span", { className: "wait", textContent: "Đang lưu lên Drive…" }));
+      else if (u.status === "error") st.append(el("span", { className: "err", textContent: "Chưa lưu lên Drive", title: u.err || "" }));
+      else if (u.status === "local") st.append(el("span", { className: "wait", textContent: "Chỉ lưu trên máy" }));
+      box.append(el("div", { className: "uprow" },
+        el("span", { className: "fn" }, el("span", { className: "kind", textContent: u.kind === "orders" ? "Đơn hàng" : "Sản phẩm" }), u.fileName || "(không tên)"),
+        el("span", { className: "meta", textContent: when + " · " + (u.rows || 0) + " dòng: " + (u.added || 0) + " mới, " + (u.updated || 0) + " cập nhật, " + (u.skipped || 0) + " bỏ qua" + (u.status === "error" && u.err ? " · " + u.err : "") }),
+        st));
+    });
+  }
+  $("upRefresh").addEventListener("click", () => { if (sync) pull(true); else toast("Bật đồng bộ online để xem lịch sử trên Drive"); });
+
   // ----- tab -----
   const TABS = ["don-hang", "san-pham", "cot", "cau-hinh"];
   function showTab(name, fromHash) {
@@ -1439,6 +1907,7 @@ function readFields_(cfg) {
   renderExtraInputs();
   renderSkuList();
   renderProducts();
+  renderUploads();
   resetProdForm();
   resetForm();
   render();
