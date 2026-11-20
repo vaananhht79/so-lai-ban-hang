@@ -233,6 +233,27 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
 @media (prefers-reduced-motion: no-preference) { .toast { transition: opacity .2s; } }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
+/* Dòng phụ dưới Tên hàng / Tiền nhập */
+.stack { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 0; }
+.stack > * { max-width: 100%; }
+td.n .stack { justify-items: end; }
+.sub { display: block; font-size: 0.78rem; color: var(--muted); font-weight: 400; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.stack .item2 { margin-top: 3px; }
+/* Nhiều sản phẩm trong 1 đơn */
+.items { display: grid; gap: 8px; }
+.items:empty { display: none; }
+.irow { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); grid-auto-flow: dense; gap: 8px; align-items: end; padding: 8px; border: 1px dashed var(--line); border-radius: 8px; background: var(--bg); }
+.irow label.f input { background: var(--surface); }
+.irow .tot { font-size: 0.85rem; padding-bottom: 8px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.irow .tot small { display: block; color: var(--muted); font-size: 0.75rem; }
+.irow > button { padding: 6px 10px; margin-bottom: 2px; }
+.items-foot { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.items-foot .sum { font-size: 0.88rem; color: var(--muted); }
+.items-foot .sum b { color: var(--fg); }
+.irow .wide2 { grid-column: span 2; }
+/* Đơn nhiều SP: mỗi SP 1 hàng, ô của đơn gộp dọc */
+#rows td.isep { border-bottom: 1px dashed var(--line); }
+#rows tr.grp td[rowspan] { vertical-align: middle; }
 /* Máy tính (màn ngang): rộng hết màn hình, form nhiều cột, chữ nhỏ gọn */
 @media (min-width: 1024px) {
   html { font-size: 13.5px; }
@@ -268,6 +289,13 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
   #rows td:empty { display: none; }
   #rows td > .clip { min-width: 0; }
   #rows td.name { order: -3; grid-column: 1 / -1; font-weight: 600; font-size: 1rem; justify-content: start; text-align: left; }
+  #rows td.name .stack { justify-items: start; }
+  #rows td .stack { flex: 1 1 auto; min-width: 0; }
+  #rows td.n:has(.sub) { grid-column: 1 / -1; align-items: start; }
+  #rows tr.grp:not(.last) { margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 0; }
+  #rows tr.cont { border-top: 1px dashed var(--line); border-top-left-radius: 0; border-top-right-radius: 0; }
+  #rows td.isep { border-bottom: 0; }
+  #rows td.n .stack { text-align: right; }
   #rows td.date-c { order: -2; grid-column: 1 / -1; justify-content: start; font-size: 0.8rem; }
   #rows td.name::before, #rows td.date-c::before, #rows td.img-c::before, #rows td.acts::before { content: none; }
   #rows tr:has(td.img-c img) td.name, #rows tr:has(td.img-c img) td.date-c { padding-left: 54px; }
@@ -309,7 +337,7 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
     <div class="stat"><span class="k">Doanh thu</span><span class="v num" id="sRev">0</span><span class="d" id="sRevD">0 đơn hoàn thành</span></div>
     <div class="stat"><span class="k">Chi phí</span><span class="v num" id="sCost">0</span><span class="d" id="sCostD">nhập 0 · ship 0</span></div>
     <div class="stat profit"><span class="k">Tiền lãi</span><span class="v num" id="sProfit">0</span><span class="d" id="sProfitD">đã trừ tồn kho</span></div>
-    <div class="stat stock"><span class="k">Tồn kho</span><span class="v num" id="sStock">0</span><span class="d" id="sStockD">0 đơn chưa xong</span></div>
+    <div class="stat stock"><span class="k">Tồn kho</span><span class="v num" id="sStock">0 đơn</span><span class="d" id="sStockD">tiền hàng tồn 0</span></div>
   </section>
 
   <section class="card">
@@ -321,12 +349,18 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
         <label class="f" data-col="sku"><span class="lbl">Mã SP</span><input type="text" id="fSku" list="skuList" autocomplete="off" placeholder="Gõ mã, VD: AT01"></label>
         <div class="f imgf" data-col="img"><span class="lbl">Ảnh</span><span class="thumb lg" id="fImg"></span></div>
         <label class="f wide" data-col="name"><span class="lbl">Tên hàng</span><input type="text" id="fName" placeholder="VD: Áo thun trắng size M – chị Lan"></label>
+        <label class="f" data-col="qty"><span class="lbl">SL</span><input class="money" inputmode="numeric" id="fQty" value="1" placeholder="1"></label>
         <label class="f" data-col="cny"><span class="lbl">Tệ</span><input inputmode="decimal" id="fCny" placeholder="VD: 35,5"></label>
         <label class="f" data-col="rate"><span class="lbl">Tỷ giá</span><input class="money" inputmode="numeric" id="fRate" placeholder="VD: 3.650"></label>
         <label class="f" data-col="cost"><span class="lbl">Tiền nhập</span><input class="money" inputmode="numeric" id="fCost" placeholder="0"></label>
         <label class="f" data-col="ship"><span class="lbl">Tiền ship</span><input class="money" inputmode="numeric" id="fShip" placeholder="0"></label>
         <label class="f" data-col="revenue"><span class="lbl">Thực nhận</span><input class="money" inputmode="numeric" id="fRev" placeholder="0"></label>
         <label class="f" data-col="profit"><span class="lbl">Tiền lãi</span><input class="money" id="fProfit" disabled value="0"></label>
+      </div>
+      <div class="items" id="itemsBox"></div>
+      <div class="items-foot">
+        <button type="button" id="addItem">+ Thêm sản phẩm vào đơn</button>
+        <span class="sum" id="itemsSum" hidden></span>
       </div>
       <datalist id="skuList"></datalist>
       <div class="sku-hint" id="skuHint" hidden><span id="skuHintMsg"></span><button type="button" id="skuAdd">Thêm sản phẩm này</button></div>
@@ -777,6 +811,10 @@ function readFields_(cfg) {
     return isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
   };
   const fmtCny = (n) => n ? Number(n).toLocaleString("vi-VN", { maximumFractionDigits: 2 }) : "";
+  const qtyOf = (o) => Number((o.extra || {})._qty) || 1;
+  const parseQty = (v) => { const n = typeof v === "number" ? Math.round(v) : parseMoney(v); return n > 0 ? n : 1; };
+  const itemsOf = (o) => (Array.isArray((o.extra || {})._items) ? o.extra._items : []);
+  const itemsCost = (its) => its.reduce((t, it) => t + (Number(it.cost) || 0), 0);
   const costFromCny = (cny, rate) => (cny > 0 && rate > 0 ? Math.round(cny * rate) : 0);
   const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -815,14 +853,33 @@ function readFields_(cfg) {
     sku: { label: "Mã SP", hint: "Cố định" },
     name: { label: "Tên hàng", hint: "Cố định" },
     cny: { label: "Tệ", hint: "Giá nhập bằng tệ" },
-    rate: { label: "Tỷ giá", hint: "Tiền nhập = Tệ × Tỷ giá" },
+    qty: { label: "SL", hint: "Số lượng · Tiền nhập nhân theo SL" },
+    rate: { label: "Tỷ giá", hint: "Tiền nhập = Tệ × Tỷ giá × SL" },
     cost: { label: "Tiền nhập", hint: "Cố định · trừ lãi · = Tệ × Tỷ giá nếu có" },
     ship: { label: "Tiền ship", hint: "Cố định · trừ lãi" },
     revenue: { label: "Thực nhận", hint: "Cố định · doanh thu" },
     profit: { label: "Tiền lãi", hint: "Tự tính" },
     status: { label: "Trạng thái", hint: "Hoàn thành / tồn kho" },
   };
-  const DEFAULT_ORDER = ["ordered", "date", "img", "sku", "name", "cny", "rate", "cost", "ship", "revenue", "profit", "status"];
+  const DEFAULT_ORDER = ["ordered", "date", "img", "sku", "name", "qty", "cny", "rate", "cost", "ship", "revenue", "profit", "status"];
+  // Cột theo từng sản phẩm (mỗi SP 1 hàng nhỏ trong đơn) và cột theo đơn (gộp ô, hiện 1 lần)
+  const ITEM_KEYS = { img: 1, sku: 1, name: 1, qty: 1, cny: 1, rate: 1, cost: 1 };
+  function perItemAllowed(c) { const f = fieldOf(c.key); return !!(f && f.type === "text"); }
+  function isPerItem(c) {
+    if (ITEM_KEYS[c.key]) return true;
+    if (!perItemAllowed(c)) return false;
+    if (c.perItem !== undefined) return !!c.perItem;
+    return /^(phan loai|mau|size|mau size|bien the)$/.test(norm(fieldOf(c.key).name));
+  }
+  const itemFields = () => layout.filter((c) => c.show !== false && perItemAllowed(c) && isPerItem(c)).map((c) => fieldOf(c.key));
+  // Danh sách SP của đơn: SP chính (các ô của đơn) + SP thêm
+  function orderItems(o) {
+    const x = o.extra || {}, its = itemsOf(o);
+    const f = {};
+    fields.forEach((fd) => { if (fd.type === "text") f[fd.id] = x[fd.id]; });
+    return [{ sku: o.sku, name: o.name || (productOf(o) || {}).name || "", qty: qtyOf(o), cny: Number(x._cny) || 0, rate: Number(x._rate) || 0, cost: (o.cost || 0) - itemsCost(its), f, main: true }]
+      .concat(its.map((it) => ({ ...it, rate: Number(it.rate) || (it.cny ? Number(x._rate) || 0 : 0), name: it.name || (productByCode(it.sku) || {}).name || "", f: it.f || {} })));
+  }
   const fieldOf = (key) => key.startsWith("f:") ? fields.find((f) => f.id === key.slice(2)) : null;
   const colLabel = (c) => { const f = fieldOf(c.key); return f ? f.name : (c.label || FIXED[c.key].label); };
   const shown = (key) => { const c = layout.find((x) => x.key === key); return !c || c.show !== false; };
@@ -1145,7 +1202,7 @@ function readFields_(cfg) {
     setThumb("fImg", p ? p.img : "");
     if (p) {
       if (!keepName) $("fName").value = p.name;
-      if (!keepName && !parseMoney($("fCost").value) && p.cost) $("fCost").value = money(p.cost);
+      if (!keepName && !parseMoney($("fCost").value) && p.cost) { unitCost = p.cost; $("fCost").value = money(p.cost * parseQty($("fQty").value)); }
       $("skuHint").hidden = true;
     } else {
       $("skuHint").hidden = !code || !shown("sku");
@@ -1166,25 +1223,110 @@ function readFields_(cfg) {
   const KEY_RATE = "so-lai-ban-hang:rate";
   function lastRate() { try { return Number(localStorage.getItem(KEY_RATE)) || 0; } catch (e) { return 0; } }
   // Có Tệ và Tỷ giá thì Tiền nhập tự tính, khoá ô Tiền nhập
+  // Tiền nhập = giá 1 cái × SL. Gõ tay Tiền nhập thì nhớ giá 1 cái để đổi SL tự nhân lại
+  let unitCost = 0;
   function onCny() {
-    const c = costFromCny(parseCny($("fCny").value), parseMoney($("fRate").value));
+    const qty = parseQty($("fQty").value);
+    const c = costFromCny(parseCny($("fCny").value), parseMoney($("fRate").value)) * qty;
     $("fCost").readOnly = !!c;
-    $("fCost").title = c ? "Tự tính = Tệ × Tỷ giá" : "";
-    if (c) $("fCost").value = money(c);
+    $("fCost").title = c ? "Tự tính = Tệ × Tỷ giá × SL" : (qty > 1 ? "Tổng tiền nhập của " + qty + " cái" : "");
+    if (c) { $("fCost").value = money(c); unitCost = c / qty; }
   }
   $("fCny").addEventListener("input", onCny);
   $("fRate").addEventListener("input", onCny);
+  $("fCost").addEventListener("input", () => { if (!$("fCost").readOnly) unitCost = parseMoney($("fCost").value) / parseQty($("fQty").value); });
+  $("fQty").addEventListener("input", () => {
+    if (!parseCny($("fCny").value) && unitCost) $("fCost").value = money(Math.round(unitCost * parseQty($("fQty").value)));
+    onCny();
+  });
+  let formItems = [];   // sản phẩm thứ 2 trở đi: {sku, name, f: {cột chữ theo SP}, qty, cny, unit}
+  // Tỷ giá riêng từng SP; để trống thì dùng tỷ giá ô trên
+  const itemRate = (it) => Number(it.rate) || parseMoney($("fRate").value);
+  function itemCost(it) {
+    const c = costFromCny(Number(it.cny) || 0, itemRate(it));
+    return (c || Number(it.unit) || 0) * (Number(it.qty) || 1);
+  }
+  function renderItems() {
+    const box = $("itemsBox");
+    box.textContent = "";
+    formItems.forEach((it, idx) => {
+      const inp = (lbl, key, attrs, cls) => {
+        const i = el("input", Object.assign({ type: "text" }, attrs || {}));
+        i.value = key === "unit" || key === "rate" ? money(it[key]) : key === "cny" ? fmtCny(it.cny) : key.startsWith("f:") ? String((it.f || {})[key.slice(2)] || "") : String(it[key] ?? "");
+        i.addEventListener("input", () => {
+          if (key === "unit" || key === "rate") it[key] = parseMoney(i.value);
+          else if (key === "cny") it.cny = parseCny(i.value);
+          else if (key === "qty") it.qty = parseQty(i.value);
+          else if (key.startsWith("f:")) it.f = { ...(it.f || {}), [key.slice(2)]: i.value.trim() };
+          else it[key] = i.value.trim();
+          if (key === "sku") {
+            const p = productByCode(it.sku);
+            if (p) { it.sku = p.code; if (!it.name) { it.name = p.name; nameI.value = p.name; } if (!it.unit && p.cost) { it.unit = p.cost; unitI.value = money(p.cost); } }
+          }
+          updateItemRow(row, it);
+          updatePreview();
+        });
+        return { lab: el("label", { className: "f" + (cls ? " " + cls : "") }, el("span", { className: "lbl", textContent: lbl }), i), i };
+      };
+      const sku = inp("Mã SP", "sku", { placeholder: "Mã", autocomplete: "off" });
+      sku.i.setAttribute("list", "skuList");
+      const name = inp("Tên hàng", "name", { placeholder: "Sản phẩm " + (idx + 2) }, "wide2"), nameI = name.i;
+      const extraLabs = itemFields().map((fd) => inp(fd.name, "f:" + fd.id, {}).lab);
+      const qty = inp("SL", "qty", { inputMode: "numeric", className: "money" });
+      const cny = inp("Tệ", "cny", { inputMode: "decimal", placeholder: "0" });
+      const rate = inp("Tỷ giá", "rate", { inputMode: "numeric", className: "money" });
+      const unit = inp("Giá nhập 1 cái", "unit", { inputMode: "numeric", className: "money", placeholder: "0" }), unitI = unit.i;
+      const tot = el("div", { className: "tot" });
+      const rm = btn("✕", "", () => { formItems.splice(idx, 1); renderItems(); updatePreview(); });
+      rm.title = "Bỏ sản phẩm này"; rm.setAttribute("aria-label", "Bỏ sản phẩm " + (idx + 2));
+      const row = el("div", { className: "irow" }, sku.lab, name.lab, ...extraLabs, qty.lab, cny.lab, rate.lab, unit.lab, tot, rm);
+      row._rate = rate.i;
+      row._unit = unitI;
+      box.append(row);
+      updateItemRow(row, it);
+    });
+    updateItemsSum();
+  }
+  function updateItemRow(row, it) {
+    const byCny = costFromCny(Number(it.cny) || 0, itemRate(it));
+    row._rate.placeholder = money(parseMoney($("fRate").value)) || "Tỷ giá";
+    row._unit.disabled = !!byCny;
+    if (byCny) row._unit.value = money(byCny);
+    row.querySelector(".tot").innerHTML = "";
+    row.querySelector(".tot").append(el("small", { textContent: "Tiền nhập" }), fmt(itemCost(it)));
+    updateItemsSum();
+  }
+  function updateItemsSum() {
+    const sum = $("itemsSum");
+    sum.hidden = !formItems.length;
+    if (!formItems.length) return;
+    const main = costFromCny(parseCny($("fCny").value), parseMoney($("fRate").value)) * parseQty($("fQty").value) || parseMoney($("fCost").value);
+    const all = main + formItems.reduce((t, it) => t + itemCost(it), 0);
+    sum.innerHTML = "";
+    sum.append((formItems.length + 1) + " sản phẩm · tổng tiền nhập cả đơn ", el("b", { textContent: fmt(all) }));
+  }
+  $("addItem").addEventListener("click", () => {
+    formItems.push({ sku: "", name: "", f: {}, qty: 1, cny: 0, rate: 0, unit: 0 });
+    renderItems();
+    const rows = $("itemsBox").querySelectorAll(".irow");
+    rows[rows.length - 1].querySelector("input").focus();
+  });
+  $("fRate").addEventListener("input", () => $("itemsBox").querySelectorAll(".irow").forEach((r, i) => updateItemRow(r, formItems[i])));
+  ["fCny", "fQty", "fCost"].forEach((id) => $(id).addEventListener("input", updateItemsSum));
   function formOrder() {
-    const cny = parseCny($("fCny").value), rate = parseMoney($("fRate").value);
+    const cny = parseCny($("fCny").value), rate = parseMoney($("fRate").value), qty = parseQty($("fQty").value);
+    const its = formItems.filter((it) => it.sku || it.name || it.cny || it.unit)
+      .map((it) => ({ sku: it.sku || "", name: it.name || "", f: Object.fromEntries(Object.entries(it.f || {}).filter(([, v]) => v)), qty: Number(it.qty) || 1, cny: Number(it.cny) || 0, rate: it.cny ? itemRate(it) : 0, unit: Number(it.unit) || 0, cost: itemCost(it) }));
+    const anyCny = cny || its.some((it) => it.cny);
     return {
       sku: (productByCode($("fSku").value) || {}).code || $("fSku").value.trim(),
       date: $("fDate").value || today(),
       name: $("fName").value.trim(),
-      cost: costFromCny(cny, rate) || parseMoney($("fCost").value),
+      cost: (costFromCny(cny, rate) * qty || parseMoney($("fCost").value)) + itemsCost(its),
       ship: parseMoney($("fShip").value),
       revenue: parseMoney($("fRev").value),
       done: $("fDone").checked,
-      extra: { ...readExtra(), _ord: $("fOrd").checked, _cny: cny || "", _rate: cny ? rate || "" : "" },
+      extra: { ...readExtra(), _ord: $("fOrd").checked, _cny: cny || "", _rate: anyCny ? rate || "" : "", _qty: qty, _items: its.length ? its : undefined },
     };
   }
   function updatePreview() {
@@ -1206,6 +1348,8 @@ function readFields_(cfg) {
     $("fDate").value = today();
     $("fDone").checked = true;
     $("fRate").value = money(lastRate());
+    $("fQty").value = "1"; unitCost = 0;
+    formItems = []; renderItems();
     onCny();
     $("formTitle").textContent = "Ghi đơn mới";
     $("saveBtn").textContent = "Lưu đơn";
@@ -1216,7 +1360,7 @@ function readFields_(cfg) {
   $("form").addEventListener("submit", (e) => {
     e.preventDefault();
     const o = formOrder();
-    const hasExtraMoney = Object.values(o.extra).some((v) => typeof v === "number" && v);
+    const hasExtraMoney = Object.entries(o.extra).some(([k, v]) => k[0] !== "_" && typeof v === "number" && v);
     if (!o.cost && !o.ship && !o.revenue && !hasExtraMoney) { toast("Nhập ít nhất một khoản tiền"); return; }
     try {
       const old = editingId && orders.find((x) => x.id === editingId);
@@ -1251,8 +1395,12 @@ function readFields_(cfg) {
     $("fSku").value = o.sku || "";
     onSku(true);
     $("fCny").value = fmtCny((o.extra || {})._cny);
-    $("fRate").value = money(Number((o.extra || {})._rate) || ((o.extra || {})._cny ? 0 : lastRate()));
-    $("fCost").value = money(o.cost);
+    $("fRate").value = money(Number((o.extra || {})._rate) || lastRate());
+    const mainCost = (o.cost || 0) - itemsCost(itemsOf(o));
+    $("fCost").value = money(mainCost);
+    $("fQty").value = String(qtyOf(o)); unitCost = mainCost / qtyOf(o);
+    formItems = itemsOf(o).map((it) => ({ ...it }));
+    renderItems();
     onCny();
     $("fShip").value = money(o.ship);
     $("fRev").value = money(o.revenue);
@@ -1301,8 +1449,8 @@ function readFields_(cfg) {
     $("sProfit").textContent = fmt(profit);
     $("sProfit").className = "v num " + (profit < 0 ? "neg" : "pos");
     $("sProfitD").textContent = nStock ? "đã trừ " + nStock + " đơn tồn kho" : "tất cả đơn đã xong";
-    $("sStock").textContent = fmt(stock);
-    $("sStockD").textContent = nStock + " đơn chưa xong (tiền nhập)";
+    $("sStock").textContent = nStock + " đơn";
+    $("sStockD").textContent = "tiền hàng tồn " + fmt(stock);
 
     // tiêu đề bảng theo thứ tự cột
     const cols = layout.filter((c) => c.show !== false);
@@ -1319,16 +1467,26 @@ function readFields_(cfg) {
     tb.textContent = "";
     list.forEach((o) => {
       const p = profitOf(o);
-      const tr = el("tr", { className: o.done ? "" : "pending" });
-      cols.forEach((c) => { const td = cellFor(c, o, p); td.dataset.label = colLabel(c); tr.append(td); });
+      const its = orderItems(o);
+      const n = its.length;
+      const trs = its.map((it, k) => el("tr", { className: (o.done ? "" : "pending") + (n > 1 ? " grp" : "") + (k ? " cont" : "") + (k === n - 1 ? " last" : "") }));
+      const tr = trs[0];
+      cols.forEach((c) => {
+        if (isPerItem(c)) {
+          its.forEach((it, k) => { const td = itemCell(c, o, it); td.dataset.label = colLabel(c); if (k < n - 1) td.classList.add("isep"); trs[k].append(td); });
+        } else {
+          const td = cellFor(c, o, p); td.dataset.label = colLabel(c); if (n > 1) td.rowSpan = n; tr.append(td);
+        }
+      });
       const acts = el("td", { className: "acts" });
+      if (n > 1) acts.rowSpan = n;
       if (confirmDelId === o.id) {
         acts.append(btn("Xoá thật", "btn-danger", () => del(o)), " ", btn("Không", "", () => { confirmDelId = null; render(); }));
       } else {
         acts.append(btn("Sửa", "", () => startEdit(o)), " ", btn("Xoá", "", () => { confirmDelId = o.id; render(); }));
       }
       tr.append(acts);
-      tb.append(tr);
+      trs.forEach((t) => tb.append(t));
     });
     const empty = $("empty");
     if (!list.length) {
@@ -1343,7 +1501,7 @@ function readFields_(cfg) {
   function colClass(c) {
     const f = fieldOf(c.key);
     if (f) return f.type === "money" ? "n" : f.type === "check" ? "c" : "";
-    return { cost: "n", ship: "n", revenue: "n", profit: "n", img: "c", ordered: "c", cny: "n", rate: "n" }[c.key] || "";
+    return { cost: "n", ship: "n", revenue: "n", profit: "n", img: "c", ordered: "c", qty: "n", cny: "n", rate: "n" }[c.key] || "";
   }
   function cellFor(c, o, p) {
     const f = fieldOf(c.key);
@@ -1355,10 +1513,7 @@ function readFields_(cfg) {
     }
     switch (c.key) {
       case "date": return el("td", { className: "date-c", textContent: o.date ? o.date.split("-").reverse().join("/") : "" });
-      case "name": {
-        const t = o.name || (productOf(o) || {}).name || "(không tên)";
-        return el("td", { className: "name" }, clip(t));
-      }
+      case "name": return el("td", { className: "name" }, clip(o.name || (productOf(o) || {}).name || "(không tên)"));
       case "ordered": {
         const cb = el("input", { type: "checkbox", checked: !!(o.extra || {})._ord, title: "Đã order" });
         cb.setAttribute("aria-label", "Đã order");
@@ -1367,6 +1522,7 @@ function readFields_(cfg) {
       }
       case "sku": return el("td", { className: "sku-c", textContent: o.sku || "" });
       case "img": { const pr = productOf(o); return el("td", { className: "img-c" }, pr && pr.img ? thumb(pr.img) : ""); }
+      case "qty": return el("td", { className: "n", textContent: String(qtyOf(o)) });
       case "cny": return el("td", { className: "n", textContent: fmtCny((o.extra || {})._cny) });
       case "rate": return el("td", { className: "n", textContent: (o.extra || {})._cny ? money(Number((o.extra || {})._rate) || 0) : "" });
       case "cost": return el("td", { className: "n", textContent: fmt(o.cost || 0) });
@@ -1386,6 +1542,20 @@ function readFields_(cfg) {
     const sp = el("span", { className: "clip", textContent: t, title: t });
     sp.addEventListener("click", () => sp.classList.toggle("open"));
     return sp;
+  }
+  function itemCell(c, o, it) {
+    const f = fieldOf(c.key);
+    if (f) { const v = (it.f || {})[f.id]; return el("td", { className: "txt" }, v ? clip(String(v)) : ""); }
+    switch (c.key) {
+      case "img": { const pr = it.main ? productOf(o) : productByCode(it.sku); return el("td", { className: "img-c" }, pr && pr.img ? thumb(pr.img) : ""); }
+      case "sku": return el("td", { className: "sku-c", textContent: it.sku || "" });
+      case "name": return el("td", { className: "name" }, clip(it.name || "(không tên)"));
+      case "qty": return el("td", { className: "n", textContent: String(Number(it.qty) || 1) });
+      case "cny": return el("td", { className: "n", textContent: fmtCny(it.cny) });
+      case "rate": return el("td", { className: "n", textContent: it.cny && it.rate ? money(Number(it.rate)) : "" });
+      case "cost": return el("td", { className: "n", textContent: fmt(Number(it.cost) || 0) });
+    }
+    return el("td");
   }
   function btn(label, cls, fn) { const b = el("button", { type: "button", textContent: label }); if (cls) b.className = cls; b.addEventListener("click", fn); return b; }
 
@@ -1448,6 +1618,12 @@ function readFields_(cfg) {
       if (f && f.type === "money") {
         eff = effectSelect(f.effect, (v) => { f.effect = v; commitFields("Đã đổi cách tính " + f.name); });
         eff.setAttribute("aria-label", "Ảnh hưởng tới lãi");
+      } else if (perItemAllowed(c)) {
+        eff = el("select");
+        eff.append(el("option", { value: "0", textContent: "Theo đơn (1 ô cho cả đơn)" }), el("option", { value: "1", textContent: "Theo từng sản phẩm" }));
+        eff.value = isPerItem(c) ? "1" : "0";
+        eff.setAttribute("aria-label", "Cột này ghi theo đơn hay theo từng sản phẩm");
+        eff.addEventListener("change", () => { c.perItem = eff.value === "1"; commitFields("Đã đổi " + colLabel(c) + (c.perItem ? " sang theo từng sản phẩm" : " sang theo đơn")); });
       } else eff = el("span");
       const up = btn("↑", "", () => moveCol(i, -1)); up.disabled = i === 0; up.setAttribute("aria-label", "Đưa lên");
       const down = btn("↓", "", () => moveCol(i, 1)); down.disabled = i === layout.length - 1; down.setAttribute("aria-label", "Đưa xuống");
@@ -1671,7 +1847,7 @@ function readFields_(cfg) {
       if (f) { const v = (o.extra || {})[f.id]; return f.type === "check" ? (v ? "Có" : "") : f.type === "money" ? (Number(v) || 0) : (v || ""); }
       const pr = productOf(o);
       const x = o.extra || {};
-      return { cny: x._cny || "", rate: x._cny ? x._rate || "" : "", ordered: x._ord ? "Có" : "", date: o.date, sku: o.sku || "", img: pr && /^https?:/.test(pr.img || "") ? pr.img : "", name: o.name || (pr ? pr.name : ""), cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: o.done ? "Hoàn thành" : "Tồn kho" }[c.key];
+      return { qty: qtyOf(o), cny: x._cny || "", rate: x._cny ? x._rate || "" : "", ordered: x._ord ? "Có" : "", date: o.date, sku: o.sku || "", img: pr && /^https?:/.test(pr.img || "") ? pr.img : "", name: [o.name || (pr ? pr.name : "")].concat(itemsOf(o).map((it) => (it.name || it.sku) + (it.qty > 1 ? " ×" + it.qty : ""))).join(" + "), cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: o.done ? "Hoàn thành" : "Tồn kho" }[c.key];
     };
     const lines = [header.map(q).join(",")];
     orders.slice().sort((a, b) => (a.date || "").localeCompare(b.date || "")).forEach((o) => {
@@ -1733,6 +1909,7 @@ function readFields_(cfg) {
     status: ["trang thai", "hoan thanh", "don hoan thanh"],
     cny: ["te", "tien te", "gia te", "nhan dan te", "cny", "rmb", "yuan"],
     rate: ["ty gia", "ti gia", "rate"],
+    qty: ["sl", "so luong", "qty", "quantity"],
     ordered: ["da order", "order", "da dat", "da dat hang"],
   };
   const P_ALIAS = {
@@ -1822,16 +1999,17 @@ function readFields_(cfg) {
       if (!date) { res.errors.push("Dòng " + (i + 1) + ": ngày “" + get("date") + "” không đọc được (VD đúng: 20/11/2026)"); continue; }
       const typed = String(get("sku")).trim();
       const pr = productByCode(typed);
+      const qty = parseQty(get("qty"));
       const o = {
         date,
         sku: pr ? pr.code : typed,
         name: String(get("name")).trim() || (pr ? pr.name : ""),
-        cost: costFromCny(parseCny(get("cny")), moneyCell(get("rate")) || lastRate()) ||
-          ("cost" in map && String(get("cost")).trim() !== "" ? moneyCell(get("cost")) : (pr && pr.cost ? pr.cost : 0)),
+        cost: qty * (costFromCny(parseCny(get("cny")), moneyCell(get("rate")) || lastRate()) ||
+          ("cost" in map && String(get("cost")).trim() !== "" ? moneyCell(get("cost")) : (pr && pr.cost ? pr.cost : 0))),
         ship: moneyCell(get("ship")),
         revenue: moneyCell(get("revenue")),
         done: boolCell(get("status"), true),
-        extra: "ordered" in map ? { _ord: boolCell(get("ordered"), false) } : {},
+        extra: { ...("ordered" in map ? { _ord: boolCell(get("ordered"), false) } : {}), _qty: qty },
       };
       const cny = parseCny(get("cny"));
       if (cny) { o.extra._cny = cny; o.extra._rate = moneyCell(get("rate")) || lastRate(); }
@@ -1959,9 +2137,10 @@ function readFields_(cfg) {
           date: ["Có", "Ngày bán, dạng ngày/tháng/năm", "20/11/2026"],
           sku: ["Không", "Mã SP. Nếu mã có trong danh sách sản phẩm, để trống Tên hàng / Tiền nhập sẽ tự lấy từ sản phẩm", "AT01"],
           name: ["Không", "Tên hàng hoặc ghi chú", "Áo thun trắng M - chị Lan"],
-          cny: ["Không", "Giá nhập bằng tệ, được lẻ (VD 35,5). Có Tệ thì Tiền nhập = Tệ × Tỷ giá", "35,5"],
+          cny: ["Không", "Giá 1 cái bằng tệ, được lẻ (VD 35,5). Có Tệ thì Tiền nhập = Tệ × Tỷ giá × SL", "35,5"],
           rate: ["Không", "Tỷ giá. Để trống = tỷ giá lần ghi đơn gần nhất", "3650"],
-          cost: ["Không", "Tiền nhập, VD 85000 hoặc 85k. Bỏ qua nếu đã điền Tệ", "129575"],
+          qty: ["Không", "Số lượng. Để trống = 1. Tiền nhập sẽ nhân theo SL", "2"],
+          cost: ["Không", "Giá nhập 1 cái, VD 85000 hoặc 85k (tự nhân SL). Bỏ qua nếu đã điền Tệ", "129575"],
           ship: ["Không", "Tiền vận chuyển", "20000"],
           revenue: ["Không", "Doanh thu thực nhận", "150000"],
           ordered: ["Không", "Có / để trống. Có = đã đặt hàng với nguồn", "Có"],
