@@ -121,7 +121,10 @@ th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spa
 td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 th.n, td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 th.c, td.c { text-align: center; }
-td.name { min-width: 140px; }
+td.name { min-width: 120px; max-width: 220px; }
+.clip { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; }
+.clip.open { white-space: normal; overflow-wrap: anywhere; }
+td.ord-c input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; margin: 0; vertical-align: middle; }
 td.txt { min-width: 90px; max-width: 200px; overflow-wrap: anywhere; }
 td.date-c { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
 td.name .date { display: block; font-size: 0.78rem; color: var(--muted); }
@@ -266,6 +269,7 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
     <form id="form" autocomplete="off">
       <div class="grid" id="fGrid">
         <label class="f" data-col="date"><span class="lbl">Ngày</span><input type="date" id="fDate" required></label>
+        <label class="f checkf" data-col="ordered"><span class="lbl">Đã order</span><span class="box"><input type="checkbox" id="fOrd"> Đã đặt hàng</span></label>
         <label class="f" data-col="sku"><span class="lbl">Mã SP</span><input type="text" id="fSku" list="skuList" autocomplete="off" placeholder="Gõ mã, VD: AT01"></label>
         <div class="f imgf" data-col="img"><span class="lbl">Ảnh</span><span class="thumb lg" id="fImg"></span></div>
         <label class="f wide" data-col="name"><span class="lbl">Tên hàng</span><input type="text" id="fName" placeholder="VD: Áo thun trắng size M – chị Lan"></label>
@@ -743,6 +747,7 @@ function readFields_(cfg) {
 
   // ----- cột -----
   const FIXED = {
+    ordered: { label: "Đã order", hint: "Tích khi đã đặt hàng" },
     date: { label: "Ngày", hint: "Cố định" },
     img: { label: "Ảnh", hint: "Ảnh theo mã SP" },
     sku: { label: "Mã SP", hint: "Cố định" },
@@ -753,7 +758,7 @@ function readFields_(cfg) {
     profit: { label: "Tiền lãi", hint: "Tự tính" },
     status: { label: "Trạng thái", hint: "Hoàn thành / tồn kho" },
   };
-  const DEFAULT_ORDER = ["date", "img", "sku", "name", "cost", "ship", "revenue", "profit", "status"];
+  const DEFAULT_ORDER = ["ordered", "date", "img", "sku", "name", "cost", "ship", "revenue", "profit", "status"];
   const fieldOf = (key) => key.startsWith("f:") ? fields.find((f) => f.id === key.slice(2)) : null;
   const colLabel = (c) => { const f = fieldOf(c.key); return f ? f.name : (c.label || FIXED[c.key].label); };
   const shown = (key) => { const c = layout.find((x) => x.key === key); return !c || c.show !== false; };
@@ -775,7 +780,16 @@ function readFields_(cfg) {
     fields.forEach((f) => { const k = "f:" + f.id; if (!seen.has(k)) { seen.add(k); insertAt({ key: k, show: true }); } });
   }
   const productByCode = (code) => { code = String(code || "").trim().toLowerCase(); return code ? products.find((p) => p.code.toLowerCase() === code) : null; };
+  const productByName = (name) => { name = String(name || "").trim().toLowerCase(); return name ? products.find((p) => String(p.name || "").trim().toLowerCase() === name) : null; };
+  const productOf = (o) => productByCode(o.sku) || (!String(o.sku || "").trim() ? productByName(o.name) : null);
+  // Link chia sẻ Google Drive không phải link ảnh trực tiếp -> đổi sang link ảnh thu nhỏ
+  function imgSrc(src) {
+    src = String(src || "").trim();
+    const m = /^https?:\/\/(?:drive|docs)\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[^#]*&)?id=|thumbnail\?(?:[^#]*&)?id=)([\w-]{10,})/.exec(src);
+    return m ? "https://drive.google.com/thumbnail?id=" + m[1] + "&sz=w400" : src;
+  }
   function thumb(src, lg) {
+    src = imgSrc(src);
     if (!src) return el("span", { className: "thumb" + (lg ? " lg" : ""), textContent: lg ? "Chưa có ảnh" : "" });
     const im = el("img", { className: "thumb" + (lg ? " lg" : ""), src, alt: "", loading: "lazy" });
     im.addEventListener("error", () => im.replaceWith(el("span", { className: "thumb" + (lg ? " lg" : ""), textContent: "Lỗi ảnh" })));
@@ -1089,7 +1103,7 @@ function readFields_(cfg) {
       ship: parseMoney($("fShip").value),
       revenue: parseMoney($("fRev").value),
       done: $("fDone").checked,
-      extra: readExtra(),
+      extra: { ...readExtra(), _ord: $("fOrd").checked },
     };
   }
   function updatePreview() {
@@ -1156,6 +1170,7 @@ function readFields_(cfg) {
     $("fShip").value = money(o.ship);
     $("fRev").value = money(o.revenue);
     $("fDone").checked = !!o.done;
+    $("fOrd").checked = !!(o.extra || {})._ord;
     fillExtra(o.extra);
     $("formTitle").textContent = "Sửa đơn";
     $("saveBtn").textContent = "Lưu thay đổi";
@@ -1241,7 +1256,7 @@ function readFields_(cfg) {
   function colClass(c) {
     const f = fieldOf(c.key);
     if (f) return f.type === "money" ? "n" : f.type === "check" ? "c" : "";
-    return { cost: "n", ship: "n", revenue: "n", profit: "n", img: "c" }[c.key] || "";
+    return { cost: "n", ship: "n", revenue: "n", profit: "n", img: "c", ordered: "c" }[c.key] || "";
   }
   function cellFor(c, o, p) {
     const f = fieldOf(c.key);
@@ -1253,9 +1268,20 @@ function readFields_(cfg) {
     }
     switch (c.key) {
       case "date": return el("td", { className: "date-c", textContent: o.date ? o.date.split("-").reverse().join("/") : "" });
-      case "name": return el("td", { className: "name", textContent: o.name || (productByCode(o.sku) || {}).name || "(không tên)" });
+      case "name": {
+        const t = o.name || (productOf(o) || {}).name || "(không tên)";
+        const sp = el("span", { className: "clip", textContent: t, title: t });
+        sp.addEventListener("click", () => sp.classList.toggle("open"));
+        return el("td", { className: "name" }, sp);
+      }
+      case "ordered": {
+        const cb = el("input", { type: "checkbox", checked: !!(o.extra || {})._ord, title: "Đã order" });
+        cb.setAttribute("aria-label", "Đã order");
+        cb.addEventListener("change", () => toggleOrdered(o, cb.checked));
+        return el("td", { className: "c ord-c" }, cb);
+      }
       case "sku": return el("td", { className: "sku-c", textContent: o.sku || "" });
-      case "img": { const pr = productByCode(o.sku); return el("td", { className: "img-c" }, pr && pr.img ? thumb(pr.img) : ""); }
+      case "img": { const pr = productOf(o); return el("td", { className: "img-c" }, pr && pr.img ? thumb(pr.img) : ""); }
       case "cost": return el("td", { className: "n", textContent: fmt(o.cost || 0) });
       case "ship": return el("td", { className: "n", textContent: fmt(o.ship || 0) });
       case "revenue": return el("td", { className: "n dim", textContent: fmt(o.revenue || 0) });
@@ -1270,6 +1296,12 @@ function readFields_(cfg) {
   }
   function btn(label, cls, fn) { const b = el("button", { type: "button", textContent: label }); if (cls) b.className = cls; b.addEventListener("click", fn); return b; }
 
+  function toggleOrdered(o, v) {
+    o.extra = { ...(o.extra || {}), _ord: v };
+    try { o.updatedAt = new Date().toISOString(); save(); enqueue({ op: "upsert", order: o }); }
+    catch (e) { toast("Không cập nhật được."); }
+    render();
+  }
   function toggleDone(o) {
     o.done = !o.done;
     try { o.updatedAt = new Date().toISOString(); save(); enqueue({ op: "upsert", order: o }); toast(o.done ? "Đã chuyển sang hoàn thành" : "Đã chuyển vào tồn kho"); }
@@ -1544,8 +1576,8 @@ function readFields_(cfg) {
     const val = (c, o) => {
       const f = fieldOf(c.key);
       if (f) { const v = (o.extra || {})[f.id]; return f.type === "check" ? (v ? "Có" : "") : f.type === "money" ? (Number(v) || 0) : (v || ""); }
-      const pr = productByCode(o.sku);
-      return { date: o.date, sku: o.sku || "", img: pr && /^https?:/.test(pr.img || "") ? pr.img : "", name: o.name || (pr ? pr.name : ""), cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: o.done ? "Hoàn thành" : "Tồn kho" }[c.key];
+      const pr = productOf(o);
+      return { ordered: (o.extra || {})._ord ? "Có" : "", date: o.date, sku: o.sku || "", img: pr && /^https?:/.test(pr.img || "") ? pr.img : "", name: o.name || (pr ? pr.name : ""), cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: o.done ? "Hoàn thành" : "Tồn kho" }[c.key];
     };
     const lines = [header.map(q).join(",")];
     orders.slice().sort((a, b) => (a.date || "").localeCompare(b.date || "")).forEach((o) => {
@@ -1605,6 +1637,7 @@ function readFields_(cfg) {
     ship: ["tien ship", "ship", "van chuyen", "tien van chuyen", "phi ship"],
     revenue: ["thuc nhan", "doanh thu", "doanh thu thuc nhan", "tien ve"],
     status: ["trang thai", "hoan thanh", "don hoan thanh"],
+    ordered: ["da order", "order", "da dat", "da dat hang"],
   };
   const P_ALIAS = {
     code: ["ma sp", "ma", "ma san pham", "sku", "ma hang"],
@@ -1701,7 +1734,7 @@ function readFields_(cfg) {
         ship: moneyCell(get("ship")),
         revenue: moneyCell(get("revenue")),
         done: boolCell(get("status"), true),
-        extra: {},
+        extra: "ordered" in map ? { _ord: boolCell(get("ordered"), false) } : {},
       };
       fields.forEach((f) => {
         const k = "f:" + f.id;
@@ -1830,6 +1863,7 @@ function readFields_(cfg) {
           cost: ["Không", "Tiền nhập, VD 85000 hoặc 85k", "85000"],
           ship: ["Không", "Tiền vận chuyển", "20000"],
           revenue: ["Không", "Doanh thu thực nhận", "150000"],
+          ordered: ["Không", "Có / để trống. Có = đã đặt hàng với nguồn", "Có"],
           status: ["Không", "Có / Không (hoặc Hoàn thành / Tồn kho). Để trống = đơn hoàn thành", "Có"],
         }[c.key] || ["Không", "", ""];
       };
