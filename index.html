@@ -102,6 +102,7 @@ label.f.checkf input { width: 18px; height: 18px; accent-color: var(--accent); }
 .tag.minus { background: var(--loss-soft); color: var(--loss); }
 .tag.plus { background: var(--accent-soft); color: var(--accent); }
 .form-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+#fCost[readonly] { background: var(--accent-soft); }
 .check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; }
 .check input { width: 18px; height: 18px; accent-color: var(--accent); }
 .preview { font-size: 0.9rem; color: var(--muted); }
@@ -273,6 +274,8 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
         <label class="f" data-col="sku"><span class="lbl">Mã SP</span><input type="text" id="fSku" list="skuList" autocomplete="off" placeholder="Gõ mã, VD: AT01"></label>
         <div class="f imgf" data-col="img"><span class="lbl">Ảnh</span><span class="thumb lg" id="fImg"></span></div>
         <label class="f wide" data-col="name"><span class="lbl">Tên hàng</span><input type="text" id="fName" placeholder="VD: Áo thun trắng size M – chị Lan"></label>
+        <label class="f" data-col="cny"><span class="lbl">Tệ</span><input inputmode="decimal" id="fCny" placeholder="VD: 35,5"></label>
+        <label class="f" data-col="rate"><span class="lbl">Tỷ giá</span><input class="money" inputmode="numeric" id="fRate" placeholder="VD: 3.650"></label>
         <label class="f" data-col="cost"><span class="lbl">Tiền nhập</span><input class="money" inputmode="numeric" id="fCost" placeholder="0"></label>
         <label class="f" data-col="ship"><span class="lbl">Tiền ship</span><input class="money" inputmode="numeric" id="fShip" placeholder="0"></label>
         <label class="f" data-col="revenue"><span class="lbl">Thực nhận</span><input class="money" inputmode="numeric" id="fRev" placeholder="0"></label>
@@ -716,6 +719,18 @@ function readFields_(cfg) {
     const n = parseFloat(s.replace(/\./g, "").replace(",", "."));
     return isFinite(n) ? Math.round(n * mult) : 0;
   };
+  // Tệ có thể lẻ: 35,5 hoặc 35.5; 1.250,5 kiểu Việt cũng đọc được
+  const parseCny = (v) => {
+    if (typeof v === "number") return isFinite(v) ? Math.round(v * 100) / 100 : 0;
+    let t = String(v || "").trim().replace(/\s|¥|tệ|te|cny|rmb/gi, "");
+    if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, "").replace(",", ".");
+    else if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)) t = t.replace(/,/g, "");
+    else t = t.replace(",", ".");
+    const n = parseFloat(t);
+    return isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
+  };
+  const fmtCny = (n) => n ? Number(n).toLocaleString("vi-VN", { maximumFractionDigits: 2 }) : "";
+  const costFromCny = (cny, rate) => (cny > 0 && rate > 0 ? Math.round(cny * rate) : 0);
   const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const TYPE_LABEL = { money: "Tiền", text: "Chữ", check: "Ô tích" };
@@ -752,13 +767,15 @@ function readFields_(cfg) {
     img: { label: "Ảnh", hint: "Ảnh theo mã SP" },
     sku: { label: "Mã SP", hint: "Cố định" },
     name: { label: "Tên hàng", hint: "Cố định" },
-    cost: { label: "Tiền nhập", hint: "Cố định · trừ lãi" },
+    cny: { label: "Tệ", hint: "Giá nhập bằng tệ" },
+    rate: { label: "Tỷ giá", hint: "Tiền nhập = Tệ × Tỷ giá" },
+    cost: { label: "Tiền nhập", hint: "Cố định · trừ lãi · = Tệ × Tỷ giá nếu có" },
     ship: { label: "Tiền ship", hint: "Cố định · trừ lãi" },
     revenue: { label: "Thực nhận", hint: "Cố định · doanh thu" },
     profit: { label: "Tiền lãi", hint: "Tự tính" },
     status: { label: "Trạng thái", hint: "Hoàn thành / tồn kho" },
   };
-  const DEFAULT_ORDER = ["ordered", "date", "img", "sku", "name", "cost", "ship", "revenue", "profit", "status"];
+  const DEFAULT_ORDER = ["ordered", "date", "img", "sku", "name", "cny", "rate", "cost", "ship", "revenue", "profit", "status"];
   const fieldOf = (key) => key.startsWith("f:") ? fields.find((f) => f.id === key.slice(2)) : null;
   const colLabel = (c) => { const f = fieldOf(c.key); return f ? f.name : (c.label || FIXED[c.key].label); };
   const shown = (key) => { const c = layout.find((x) => x.key === key); return !c || c.show !== false; };
@@ -774,8 +791,9 @@ function readFields_(cfg) {
     DEFAULT_ORDER.forEach((k, i) => {
       if (seen.has(k)) return;
       seen.add(k);
-      if (k === "profit" || k === "status") layout.push({ key: k, show: true });
-      else layout.splice(Math.min(i, layout.length), 0, { key: k, show: true });
+      if (k === "profit" || k === "status") { layout.push({ key: k, show: true }); return; }
+      const next = DEFAULT_ORDER.slice(i + 1).map((x) => layout.findIndex((c) => c.key === x)).find((x) => x >= 0);
+      layout.splice(next == null ? layout.length : next, 0, { key: k, show: true });
     });
     fields.forEach((f) => { const k = "f:" + f.id; if (!seen.has(k)) { seen.add(k); insertAt({ key: k, show: true }); } });
   }
@@ -870,8 +888,10 @@ function readFields_(cfg) {
       throw e;
     } finally { clearTimeout(t); }
   }
+  let localRev = 0;                // tăng mỗi lần sửa; dữ liệu tải về trước lần sửa thì bỏ
   function enqueue(op) {
     if (!sync) return;
+    localRev++;
     queue.push(op); saveQueue(); flush();
   }
   async function flush() {
@@ -887,9 +907,10 @@ function readFields_(cfg) {
     if (!sync || pulling) return;
     if (queue.length) { await flush(); if (queue.length) return; }
     pulling = true; renderSync();
+    const rev0 = localRev;
     try {
       const j = await call({ action: "load" });
-      if (!queue.length) {            // không ghi đè nếu vừa có thay đổi trong lúc tải
+      if (!queue.length && localRev === rev0) {   // vừa sửa trong lúc tải thì không ghi đè bằng bản cũ
         const c = parseCfg(j.fields);
         orders = j.orders || []; fields = c.fields;
         if (c.layout.length) layout = c.layout;
@@ -899,6 +920,7 @@ function readFields_(cfg) {
         if (serverVer >= 3) setTimeout(retryUploads, 0);
         normLayout(); save(); refreshAll();
       }
+      else setTimeout(() => pull(false), 1500);   // tải lại sau khi thay đổi đã lưu
       syncErr = "";
       if (showToast) toast("Đã tải dữ liệu mới nhất");
     } catch (e) { syncErr = e.message; }
@@ -1094,16 +1116,28 @@ function readFields_(cfg) {
     $("pName").focus();
   });
 
+  const KEY_RATE = "so-lai-ban-hang:rate";
+  function lastRate() { try { return Number(localStorage.getItem(KEY_RATE)) || 0; } catch (e) { return 0; } }
+  // Có Tệ và Tỷ giá thì Tiền nhập tự tính, khoá ô Tiền nhập
+  function onCny() {
+    const c = costFromCny(parseCny($("fCny").value), parseMoney($("fRate").value));
+    $("fCost").readOnly = !!c;
+    $("fCost").title = c ? "Tự tính = Tệ × Tỷ giá" : "";
+    if (c) $("fCost").value = money(c);
+  }
+  $("fCny").addEventListener("input", onCny);
+  $("fRate").addEventListener("input", onCny);
   function formOrder() {
+    const cny = parseCny($("fCny").value), rate = parseMoney($("fRate").value);
     return {
       sku: (productByCode($("fSku").value) || {}).code || $("fSku").value.trim(),
       date: $("fDate").value || today(),
       name: $("fName").value.trim(),
-      cost: parseMoney($("fCost").value),
+      cost: costFromCny(cny, rate) || parseMoney($("fCost").value),
       ship: parseMoney($("fShip").value),
       revenue: parseMoney($("fRev").value),
       done: $("fDone").checked,
-      extra: { ...readExtra(), _ord: $("fOrd").checked },
+      extra: { ...readExtra(), _ord: $("fOrd").checked, _cny: cny || "", _rate: cny ? rate || "" : "" },
     };
   }
   function updatePreview() {
@@ -1124,6 +1158,8 @@ function readFields_(cfg) {
     $("skuHint").hidden = true;
     $("fDate").value = today();
     $("fDone").checked = true;
+    $("fRate").value = money(lastRate());
+    onCny();
     $("formTitle").textContent = "Ghi đơn mới";
     $("saveBtn").textContent = "Lưu đơn";
     $("cancelEdit").hidden = true;
@@ -1143,6 +1179,7 @@ function readFields_(cfg) {
         enqueue({ op: "upsert", order: old });
         toast("Đã cập nhật đơn");
       } else {
+        if (o.extra._rate) try { localStorage.setItem(KEY_RATE, String(o.extra._rate)); } catch (e2) {}
         const rec = { ...o, id: editingId || newId(), createdAt: new Date().toISOString() };
         orders.push(rec);
         save();
@@ -1166,7 +1203,10 @@ function readFields_(cfg) {
     $("fName").value = o.name || "";
     $("fSku").value = o.sku || "";
     onSku(true);
+    $("fCny").value = fmtCny((o.extra || {})._cny);
+    $("fRate").value = money(Number((o.extra || {})._rate) || ((o.extra || {})._cny ? 0 : lastRate()));
     $("fCost").value = money(o.cost);
+    onCny();
     $("fShip").value = money(o.ship);
     $("fRev").value = money(o.revenue);
     $("fDone").checked = !!o.done;
@@ -1256,7 +1296,7 @@ function readFields_(cfg) {
   function colClass(c) {
     const f = fieldOf(c.key);
     if (f) return f.type === "money" ? "n" : f.type === "check" ? "c" : "";
-    return { cost: "n", ship: "n", revenue: "n", profit: "n", img: "c", ordered: "c" }[c.key] || "";
+    return { cost: "n", ship: "n", revenue: "n", profit: "n", img: "c", ordered: "c", cny: "n", rate: "n" }[c.key] || "";
   }
   function cellFor(c, o, p) {
     const f = fieldOf(c.key);
@@ -1282,6 +1322,8 @@ function readFields_(cfg) {
       }
       case "sku": return el("td", { className: "sku-c", textContent: o.sku || "" });
       case "img": { const pr = productOf(o); return el("td", { className: "img-c" }, pr && pr.img ? thumb(pr.img) : ""); }
+      case "cny": return el("td", { className: "n", textContent: fmtCny((o.extra || {})._cny) });
+      case "rate": return el("td", { className: "n", textContent: (o.extra || {})._cny ? money(Number((o.extra || {})._rate) || 0) : "" });
       case "cost": return el("td", { className: "n", textContent: fmt(o.cost || 0) });
       case "ship": return el("td", { className: "n", textContent: fmt(o.ship || 0) });
       case "revenue": return el("td", { className: "n dim", textContent: fmt(o.revenue || 0) });
@@ -1577,7 +1619,8 @@ function readFields_(cfg) {
       const f = fieldOf(c.key);
       if (f) { const v = (o.extra || {})[f.id]; return f.type === "check" ? (v ? "Có" : "") : f.type === "money" ? (Number(v) || 0) : (v || ""); }
       const pr = productOf(o);
-      return { ordered: (o.extra || {})._ord ? "Có" : "", date: o.date, sku: o.sku || "", img: pr && /^https?:/.test(pr.img || "") ? pr.img : "", name: o.name || (pr ? pr.name : ""), cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: o.done ? "Hoàn thành" : "Tồn kho" }[c.key];
+      const x = o.extra || {};
+      return { cny: x._cny || "", rate: x._cny ? x._rate || "" : "", ordered: x._ord ? "Có" : "", date: o.date, sku: o.sku || "", img: pr && /^https?:/.test(pr.img || "") ? pr.img : "", name: o.name || (pr ? pr.name : ""), cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: o.done ? "Hoàn thành" : "Tồn kho" }[c.key];
     };
     const lines = [header.map(q).join(",")];
     orders.slice().sort((a, b) => (a.date || "").localeCompare(b.date || "")).forEach((o) => {
@@ -1637,6 +1680,8 @@ function readFields_(cfg) {
     ship: ["tien ship", "ship", "van chuyen", "tien van chuyen", "phi ship"],
     revenue: ["thuc nhan", "doanh thu", "doanh thu thuc nhan", "tien ve"],
     status: ["trang thai", "hoan thanh", "don hoan thanh"],
+    cny: ["te", "tien te", "gia te", "nhan dan te", "cny", "rmb", "yuan"],
+    rate: ["ty gia", "ti gia", "rate"],
     ordered: ["da order", "order", "da dat", "da dat hang"],
   };
   const P_ALIAS = {
@@ -1730,12 +1775,15 @@ function readFields_(cfg) {
         date,
         sku: pr ? pr.code : typed,
         name: String(get("name")).trim() || (pr ? pr.name : ""),
-        cost: "cost" in map && String(get("cost")).trim() !== "" ? moneyCell(get("cost")) : (pr && pr.cost ? pr.cost : 0),
+        cost: costFromCny(parseCny(get("cny")), moneyCell(get("rate")) || lastRate()) ||
+          ("cost" in map && String(get("cost")).trim() !== "" ? moneyCell(get("cost")) : (pr && pr.cost ? pr.cost : 0)),
         ship: moneyCell(get("ship")),
         revenue: moneyCell(get("revenue")),
         done: boolCell(get("status"), true),
         extra: "ordered" in map ? { _ord: boolCell(get("ordered"), false) } : {},
       };
+      const cny = parseCny(get("cny"));
+      if (cny) { o.extra._cny = cny; o.extra._rate = moneyCell(get("rate")) || lastRate(); }
       fields.forEach((f) => {
         const k = "f:" + f.id;
         if (!(k in map)) return;
@@ -1860,7 +1908,9 @@ function readFields_(cfg) {
           date: ["Có", "Ngày bán, dạng ngày/tháng/năm", "20/11/2026"],
           sku: ["Không", "Mã SP. Nếu mã có trong danh sách sản phẩm, để trống Tên hàng / Tiền nhập sẽ tự lấy từ sản phẩm", "AT01"],
           name: ["Không", "Tên hàng hoặc ghi chú", "Áo thun trắng M - chị Lan"],
-          cost: ["Không", "Tiền nhập, VD 85000 hoặc 85k", "85000"],
+          cny: ["Không", "Giá nhập bằng tệ, được lẻ (VD 35,5). Có Tệ thì Tiền nhập = Tệ × Tỷ giá", "35,5"],
+          rate: ["Không", "Tỷ giá. Để trống = tỷ giá lần ghi đơn gần nhất", "3650"],
+          cost: ["Không", "Tiền nhập, VD 85000 hoặc 85k. Bỏ qua nếu đã điền Tệ", "129575"],
           ship: ["Không", "Tiền vận chuyển", "20000"],
           revenue: ["Không", "Doanh thu thực nhận", "150000"],
           ordered: ["Không", "Có / để trống. Có = đã đặt hàng với nguồn", "Có"],
