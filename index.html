@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f6b58">
+<title>Sổ lãi bán hàng</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lexend:wght@500;600&display=swap">
+<style>
+/* Layout: một cột kiểu sổ ghi chép — dải tổng kết tháng, form ghi đơn, danh sách đơn theo ngày */
+:root {
+  --bg: #f4f6f3;
+  --surface: #ffffff;
+  --fg: #18201d;
+  --muted: #5f6b66;
+  --line: #dfe4e0;
+  --accent: #0f6b58;
+  --accent-soft: #e1efea;
+  --gain: #13795b;
+  --loss: #b42318;
+  --loss-soft: #fbe9e7;
+  --stock: #9a6412;
+  --stock-soft: #f8eedb;
+  --font-display: "Lexend", "Be Vietnam Pro", system-ui, sans-serif;
+  --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121715; --surface: #1a211e; --fg: #e8eeeb; --muted: #9aa8a2; --line: #2c3632;
+    --accent: #4cc4a4; --accent-soft: #1d3a32; --gain: #5fd3a8; --loss: #ff8a7a; --loss-soft: #3a201d;
+    --stock: #e8b45c; --stock-soft: #3a2f1c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121715; --surface: #1a211e; --fg: #e8eeeb; --muted: #9aa8a2; --line: #2c3632;
+  --accent: #4cc4a4; --accent-soft: #1d3a32; --gain: #5fd3a8; --loss: #ff8a7a; --loss-soft: #3a201d;
+  --stock: #e8b45c; --stock-soft: #3a2f1c; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body {
+  margin: 0;
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+.wrap { max-width: 880px; margin: 0 auto; display: grid; gap: 20px; }
+.num { font-variant-numeric: tabular-nums; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 1.6rem; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 0.88rem; margin: 2px 0 0; }
+.month { display: flex; align-items: center; gap: 6px; }
+.month button { min-width: 34px; height: 34px; }
+.month-label { font-weight: 600; min-width: 112px; text-align: center; }
+button, input, select { font: inherit; color: inherit; }
+button {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 12px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 600; padding: 10px 18px; }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-primary:disabled { opacity: .5; cursor: default; }
+
+/* Tổng kết */
+.summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.stat { background: var(--surface); padding: 14px 16px; display: grid; gap: 2px; }
+.stat .k { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.stat .v { font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; }
+.stat .d { font-size: 0.8rem; color: var(--muted); }
+.stat.profit .v.pos { color: var(--gain); }
+.stat.profit .v.neg { color: var(--loss); }
+.stat.stock .v { color: var(--stock); }
+@media (max-width: 640px) { .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Form */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; }
+.card h2 { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; margin: 0 0 14px; }
+form { display: grid; gap: 14px; }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.grid .wide { grid-column: span 2; }
+@media (max-width: 640px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid .wide { grid-column: span 2; } }
+label.f { display: grid; gap: 4px; font-size: 0.82rem; color: var(--muted); font-weight: 500; min-width: 0; }
+label.f input {
+  width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 10px; color: var(--fg); font-size: 0.95rem;
+}
+label.f input.money { text-align: right; font-variant-numeric: tabular-nums; }
+label.f input:disabled { opacity: .45; }
+.form-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.preview { font-size: 0.9rem; color: var(--muted); }
+.preview b { font-weight: 700; }
+.preview .pos { color: var(--gain); } .preview .neg { color: var(--loss); }
+.right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* Danh sách */
+.list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.list-head h2 { margin: 0; }
+.filters { display: flex; gap: 4px; flex-wrap: wrap; }
+.filters button { font-size: 0.82rem; padding: 4px 10px; border-radius: 999px; }
+.filters button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.table-wrap { overflow-x: auto; margin-top: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th.n, td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.name { min-width: 140px; }
+td.name .date { display: block; font-size: 0.78rem; color: var(--muted); }
+td.pos { color: var(--gain); font-weight: 600; } td.neg { color: var(--loss); font-weight: 600; }
+tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid transparent; cursor: pointer; white-space: nowrap; }
+.pill.done { background: var(--accent-soft); color: var(--accent); }
+.pill.stock { background: var(--stock-soft); color: var(--stock); }
+.pill:hover { border-color: currentColor; }
+.acts { white-space: nowrap; text-align: right; }
+.acts button { font-size: 0.8rem; padding: 3px 8px; }
+.acts .del-yes { background: var(--loss); border-color: var(--loss); color: var(--surface); }
+.empty { text-align: center; color: var(--muted); padding: 28px 12px; }
+.note { font-size: 0.85rem; padding: 10px 12px; border-radius: 8px; background: var(--stock-soft); color: var(--stock); }
+.legend { font-size: 0.8rem; color: var(--muted); margin: 10px 0 0; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-size: 0.88rem; }
+@media (prefers-reduced-motion: no-preference) { .toast { transition: opacity .2s; } }
+.backup { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.backup .hint { font-size: 0.82rem; color: var(--muted); flex-basis: 100%; margin: 0; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Sổ lãi bán hàng</h1>
+      <p class="sub">Ghi tiền nhập, ship, tiền thực nhận. Đơn chưa xong được tính là tồn kho.</p>
+    </div>
+    <div class="month" aria-label="Chọn tháng">
+      <button id="prevM" type="button" aria-label="Tháng trước">‹</button>
+      <span class="month-label" id="monthLabel"></span>
+      <button id="nextM" type="button" aria-label="Tháng sau">›</button>
+      <button id="allM" type="button">Tất cả</button>
+    </div>
+  </header>
+
+  <div id="storeNote" class="note" hidden></div>
+
+  <section class="summary" aria-label="Tổng kết">
+    <div class="stat"><span class="k">Doanh thu thực nhận</span><span class="v num" id="sRev">0</span><span class="d" id="sRevD">0 đơn hoàn thành</span></div>
+    <div class="stat"><span class="k">Tiền nhập + ship</span><span class="v num" id="sCost">0</span><span class="d" id="sCostD">ship 0</span></div>
+    <div class="stat profit"><span class="k">Tiền lãi</span><span class="v num" id="sProfit">0</span><span class="d" id="sProfitD">đã trừ tồn kho</span></div>
+    <div class="stat stock"><span class="k">Tồn kho</span><span class="v num" id="sStock">0</span><span class="d" id="sStockD">0 đơn chưa xong</span></div>
+  </section>
+
+  <section class="card">
+    <h2 id="formTitle">Ghi đơn mới</h2>
+    <form id="form" autocomplete="off">
+      <div class="grid">
+        <label class="f"><span>Ngày</span><input type="date" id="fDate" required></label>
+        <label class="f wide"><span>Tên hàng / ghi chú</span><input type="text" id="fName" placeholder="VD: Áo thun trắng size M – chị Lan"></label>
+        <span></span>
+        <label class="f"><span>Tiền nhập</span><input class="money" inputmode="numeric" id="fCost" placeholder="0"></label>
+        <label class="f"><span>Tiền vận chuyển</span><input class="money" inputmode="numeric" id="fShip" placeholder="0"></label>
+        <label class="f"><span>Doanh thu thực nhận</span><input class="money" inputmode="numeric" id="fRev" placeholder="0"></label>
+        <label class="f"><span>Tiền lãi</span><input class="money" id="fProfit" disabled value="0"></label>
+      </div>
+      <div class="form-foot">
+        <label class="check"><input type="checkbox" id="fDone" checked> Đơn hoàn thành</label>
+        <span class="preview" id="preview"></span>
+        <div class="right">
+          <button type="button" id="cancelEdit" hidden>Huỷ sửa</button>
+          <button type="submit" class="btn-primary" id="saveBtn">Lưu đơn</button>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="list-head">
+      <h2>Danh sách đơn</h2>
+      <div class="filters" role="group" aria-label="Lọc đơn">
+        <button type="button" data-f="all" aria-pressed="true">Tất cả</button>
+        <button type="button" data-f="done" aria-pressed="false">Hoàn thành</button>
+        <button type="button" data-f="stock" aria-pressed="false">Tồn kho</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Đơn</th><th class="n">Nhập</th><th class="n">Ship</th><th class="n">Thực nhận</th><th class="n">Lãi</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="empty" id="empty">Đang tải sổ…</p>
+    <p class="legend">Bấm vào ô trạng thái để chuyển đơn giữa “Hoàn thành” và “Tồn kho”. Đơn tồn kho có lãi âm bằng tiền nhập + ship.</p>
+  </section>
+
+  <section class="card">
+    <h2>Sao lưu dữ liệu</h2>
+    <div class="backup">
+      <button type="button" id="exportJson">Tải file sao lưu</button>
+      <button type="button" id="importBtn">Khôi phục từ file</button>
+      <button type="button" id="exportCsv">Xuất Excel (CSV)</button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+      <span id="importConfirm" hidden>
+        <span id="importMsg"></span>
+        <button type="button" class="btn-primary" id="importYes">Thay thế</button>
+        <button type="button" id="importNo">Huỷ</button>
+      </span>
+      <p class="hint">Dữ liệu lưu ngay trong trình duyệt của máy này. Nên tải file sao lưu định kỳ; đổi máy/trình duyệt thì dùng “Khôi phục từ file”. Xoá lịch sử duyệt web (dữ liệu trang) sẽ mất sổ.</p>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => (n < 0 ? "−" : "") + Math.abs(Math.round(n)).toLocaleString("vi-VN");
+  const parseMoney = (s) => {
+    s = String(s || "").trim().toLowerCase();
+    let mult = 1;
+    if (/k$/.test(s)) { mult = 1000; s = s.slice(0, -1); }
+    else if (/(tr|m)$/.test(s)) { mult = 1e6; s = s.replace(/(tr|m)$/, ""); }
+    const n = parseFloat(s.replace(/\./g, "").replace(",", "."));
+    return isFinite(n) ? Math.round(n * mult) : 0;
+  };
+  // Lãi: hoàn thành = thực nhận − nhập − ship; chưa xong (tồn kho) = −(nhập + ship)
+  const profitOf = (o) => o.done ? (o.revenue || 0) - (o.cost || 0) - (o.ship || 0) : -((o.cost || 0) + (o.ship || 0));
+  const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+
+  let orders = [];
+  let editingId = null;
+  let confirmDelId = null;
+  let filter = "all";
+  const now = new Date();
+  let month = { y: now.getFullYear(), m: now.getMonth() + 1, all: false };
+
+  function toast(msg) {
+    const t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 2200);
+  }
+
+  // ----- tiền: tự thêm dấu chấm khi gõ -----
+  document.querySelectorAll("input.money:not(:disabled)").forEach((inp) => {
+    inp.addEventListener("blur", () => { if (inp.value.trim()) inp.value = parseMoney(inp.value).toLocaleString("vi-VN"); });
+    inp.addEventListener("input", updatePreview);
+  });
+  $("fDone").addEventListener("change", updatePreview);
+
+  function formOrder() {
+    return {
+      date: $("fDate").value || today(),
+      name: $("fName").value.trim(),
+      cost: parseMoney($("fCost").value),
+      ship: parseMoney($("fShip").value),
+      revenue: parseMoney($("fRev").value),
+      done: $("fDone").checked,
+    };
+  }
+  function updatePreview() {
+    const o = formOrder();
+    const p = profitOf(o);
+    $("fRev").disabled = false;
+    $("fProfit").value = fmt(p);
+    $("fProfit").style.color = p < 0 ? "var(--loss)" : p > 0 ? "var(--gain)" : "";
+    $("preview").innerHTML = o.done
+      ? "Tính vào doanh thu, lãi <b class='" + (p < 0 ? "neg" : "pos") + "'>" + fmt(p) + "</b>"
+      : "Tính là <b>tồn kho</b>, lãi tạm <b class='neg'>" + fmt(p) + "</b>";
+  }
+
+  function resetForm() {
+    editingId = null;
+    $("form").reset();
+    $("fDate").value = today();
+    $("fDone").checked = true;
+    $("formTitle").textContent = "Ghi đơn mới";
+    $("saveBtn").textContent = "Lưu đơn";
+    $("cancelEdit").hidden = true;
+    updatePreview();
+  }
+
+  $("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const o = formOrder();
+    if (!o.cost && !o.ship && !o.revenue) { toast("Nhập ít nhất một khoản tiền"); return; }
+    $("saveBtn").disabled = true;
+    try {
+      if (editingId) {
+        const old = orders.find((x) => x.id === editingId);
+        Object.assign(old, o, { updatedAt: new Date().toISOString() });
+        save();
+        render();
+        toast("Đã cập nhật đơn");
+      } else {
+        const rec = { ...o, createdAt: new Date().toISOString() };
+        orders.push({ ...rec, id: newId() });
+        save();
+        render();
+        toast("Đã lưu đơn");
+      }
+      const keepDate = $("fDate").value;
+      resetForm();
+      $("fDate").value = keepDate;
+      $("fName").focus();
+    } catch (err) {
+      toast("Không lưu được: " + (err && err.message ? err.message : "lỗi") + ".");
+    } finally { $("saveBtn").disabled = false; }
+  });
+  $("cancelEdit").addEventListener("click", resetForm);
+
+  function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  // ----- tháng -----
+  const inMonth = (o) => month.all || (o.date || "").slice(0, 7) === month.y + "-" + String(month.m).padStart(2, "0");
+  function shiftMonth(d) {
+    month.all = false;
+    month.m += d;
+    if (month.m < 1) { month.m = 12; month.y--; }
+    if (month.m > 12) { month.m = 1; month.y++; }
+    render();
+  }
+  $("prevM").addEventListener("click", () => shiftMonth(-1));
+  $("nextM").addEventListener("click", () => shiftMonth(1));
+  $("allM").addEventListener("click", () => { month.all = !month.all; render(); });
+
+  document.querySelectorAll(".filters button").forEach((b) => b.addEventListener("click", () => {
+    filter = b.dataset.f;
+    document.querySelectorAll(".filters button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    render();
+  }));
+
+  // ----- hiển thị -----
+  function render() {
+    $("monthLabel").textContent = month.all ? "Mọi tháng" : "Tháng " + month.m + "/" + month.y;
+    $("allM").setAttribute("aria-pressed", String(month.all));
+    const scope = orders.filter(inMonth);
+    let rev = 0, cost = 0, ship = 0, profit = 0, stock = 0, nDone = 0, nStock = 0;
+    scope.forEach((o) => {
+      cost += o.cost || 0; ship += o.ship || 0; profit += profitOf(o);
+      if (o.done) { rev += o.revenue || 0; nDone++; } else { stock += (o.cost || 0); nStock++; }
+    });
+    $("sRev").textContent = fmt(rev);
+    $("sRevD").textContent = nDone + " đơn hoàn thành";
+    $("sCost").textContent = fmt(cost + ship);
+    $("sCostD").textContent = "nhập " + fmt(cost) + " · ship " + fmt(ship);
+    $("sProfit").textContent = fmt(profit);
+    $("sProfit").className = "v num " + (profit < 0 ? "neg" : "pos");
+    $("sProfitD").textContent = nStock ? "đã trừ " + nStock + " đơn tồn kho" : "tất cả đơn đã xong";
+    $("sStock").textContent = fmt(stock);
+    $("sStockD").textContent = nStock + " đơn chưa xong (tiền nhập)";
+
+    const list = scope
+      .filter((o) => filter === "all" || (filter === "done" ? o.done : !o.done))
+      .sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || "").localeCompare(a.createdAt || ""));
+
+    const tb = $("rows");
+    tb.textContent = "";
+    list.forEach((o) => {
+      const p = profitOf(o);
+      const tr = document.createElement("tr");
+      if (!o.done) tr.className = "pending";
+      const d = o.date ? o.date.split("-").reverse().join("/") : "";
+      tr.innerHTML =
+        "<td class='name'><span class='nm'></span><span class='date'>" + d + "</span></td>" +
+        "<td class='n'>" + fmt(o.cost || 0) + "</td>" +
+        "<td class='n'>" + fmt(o.ship || 0) + "</td>" +
+        "<td class='n dim'>" + fmt(o.revenue || 0) + "</td>" +
+        "<td class='n " + (p < 0 ? "neg" : "pos") + "'>" + fmt(p) + "</td>" +
+        "<td><button type='button' class='pill " + (o.done ? "done" : "stock") + "' data-act='toggle'>" + (o.done ? "✓ Hoàn thành" : "Tồn kho") + "</button></td>" +
+        "<td class='acts'></td>";
+      tr.querySelector(".nm").textContent = o.name || "(không tên)";
+      tr.querySelector("[data-act=toggle]").addEventListener("click", () => toggleDone(o));
+      const acts = tr.querySelector(".acts");
+      if (confirmDelId === o.id) {
+        acts.append(btn("Xoá thật", "del-yes", () => del(o)), " ", btn("Không", "", () => { confirmDelId = null; render(); }));
+      } else {
+        acts.append(btn("Sửa", "", () => startEdit(o)), " ", btn("Xoá", "", () => { confirmDelId = o.id; render(); }));
+      }
+      tb.appendChild(tr);
+    });
+    const empty = $("empty");
+    if (loading) { empty.hidden = false; empty.textContent = "Đang tải sổ…"; }
+    else if (!list.length) {
+      empty.hidden = false;
+      empty.textContent = orders.length
+        ? "Không có đơn nào trong " + (month.all ? "sổ" : "tháng " + month.m + "/" + month.y) + " theo bộ lọc này."
+        : "Chưa có đơn nào. Điền form phía trên rồi bấm “Lưu đơn” để ghi đơn đầu tiên.";
+    } else empty.hidden = true;
+  }
+  function btn(label, cls, fn) { const b = document.createElement("button"); b.type = "button"; b.textContent = label; if (cls) b.className = cls; b.addEventListener("click", fn); return b; }
+
+  async function toggleDone(o) {
+    o.done = !o.done; render();
+    try { o.updatedAt = new Date().toISOString(); save(); toast(o.done ? "Đã chuyển sang hoàn thành" : "Đã chuyển vào tồn kho"); }
+    catch (e) { o.done = !o.done; render(); toast("Không cập nhật được, thử lại sau."); }
+  }
+  async function del(o) {
+    confirmDelId = null;
+    try {
+      orders = orders.filter((x) => x !== o);
+      save();
+      if (editingId === o.id) resetForm();
+      render(); toast("Đã xoá đơn");
+    } catch (e) { render(); toast("Không xoá được, thử lại sau."); }
+  }
+  function startEdit(o) {
+    editingId = o.id;
+    $("fDate").value = o.date || today();
+    $("fName").value = o.name || "";
+    $("fCost").value = o.cost ? o.cost.toLocaleString("vi-VN") : "";
+    $("fShip").value = o.ship ? o.ship.toLocaleString("vi-VN") : "";
+    $("fRev").value = o.revenue ? o.revenue.toLocaleString("vi-VN") : "";
+    $("fDone").checked = !!o.done;
+    $("formTitle").textContent = "Sửa đơn";
+    $("saveBtn").textContent = "Lưu thay đổi";
+    $("cancelEdit").hidden = false;
+    updatePreview();
+    $("form").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  // ----- lưu trữ: localStorage trong trình duyệt -----
+  const KEY = "so-lai-ban-hang:orders";
+  let loading = false;
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(orders)); }
+    catch (e) { showNote("Trình duyệt không cho lưu (chế độ ẩn danh?). Hãy tải file sao lưu trước khi đóng trang."); throw e; }
+  }
+  function showNote(msg) { const n = $("storeNote"); n.hidden = false; n.textContent = msg; }
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) orders = JSON.parse(raw) || [];
+  } catch (e) { showNote("Không đọc được dữ liệu cũ trong trình duyệt. Nếu có file sao lưu, hãy dùng “Khôi phục từ file”."); }
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
+  // ----- sao lưu / khôi phục -----
+  function download(name, text, type) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type }));
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  $("exportJson").addEventListener("click", () => {
+    download("so-lai-ban-hang-" + today() + ".json", JSON.stringify({ version: 1, orders }, null, 1), "application/json");
+  });
+  $("exportCsv").addEventListener("click", () => {
+    const q = (v) => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const lines = [["Ngày", "Tên hàng", "Tiền nhập", "Tiền ship", "Doanh thu thực nhận", "Tiền lãi", "Trạng thái"].map(q).join(",")];
+    orders.slice().sort((a, b) => (a.date || "").localeCompare(b.date || "")).forEach((o) => {
+      lines.push([o.date, o.name, o.cost || 0, o.ship || 0, o.revenue || 0, profitOf(o), o.done ? "Hoàn thành" : "Tồn kho"].map(q).join(","));
+    });
+    download("so-lai-ban-hang-" + today() + ".csv", "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
+  });
+  let pendingImport = null;
+  $("importBtn").addEventListener("click", () => $("importFile").click());
+  $("importFile").addEventListener("change", async (e) => {
+    const f = e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      const list = Array.isArray(data) ? data : data.orders;
+      if (!Array.isArray(list)) throw new Error("sai định dạng");
+      pendingImport = list.filter((o) => o && typeof o === "object").map((o) => ({ ...o, id: o.id || newId() }));
+      $("importMsg").textContent = "File có " + pendingImport.length + " đơn, sẽ thay toàn bộ " + orders.length + " đơn hiện tại.";
+      $("importConfirm").hidden = false;
+    } catch (err) { toast("File không đúng định dạng sao lưu của sổ này."); }
+  });
+  $("importNo").addEventListener("click", () => { pendingImport = null; $("importConfirm").hidden = true; });
+  $("importYes").addEventListener("click", () => {
+    if (!pendingImport) return;
+    orders = pendingImport; pendingImport = null; $("importConfirm").hidden = true;
+    try { save(); toast("Đã khôi phục " + orders.length + " đơn"); } catch (e) {}
+    render();
+  });
+
+  resetForm();
+  render();
+})();
+</script>
+</body>
+</html>
