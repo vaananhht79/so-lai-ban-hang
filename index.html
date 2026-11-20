@@ -350,6 +350,10 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
       <button type="button" id="pCancel" hidden>Huỷ sửa</button>
       <button type="button" class="btn-primary" id="pSave">Lưu sản phẩm</button>
     </div>
+    <div class="sku-hint" id="nameSync" hidden style="margin-top:14px">
+      <span id="nameSyncMsg"></span>
+      <button type="button" id="nameSyncYes">Đổi theo danh sách SP</button>
+    </div>
     <input type="search" class="psearch" id="pSearch" placeholder="Tìm theo mã hoặc tên…" aria-label="Tìm sản phẩm">
     <div class="plist" id="prodList"></div>
     <p class="hint">Ảnh chọn từ máy được thu nhỏ (khoảng 200px) để lưu nhẹ và đồng bộ được.</p>
@@ -503,6 +507,14 @@ function doPost(e) {
 }
 
 function handle_(req) {
+  try {
+    return handleInner_(req);
+  } catch (err) {
+    return out_({ ok: false, error: "Lỗi Apps Script: " + (err && err.message ? err.message : String(err)) });
+  }
+}
+
+function handleInner_(req) {
   if (SECRET === "doi-mat-khau-nay") return out_({ ok: false, error: "Chưa đổi mật khẩu SECRET trong Apps Script" });
   if (req.key !== SECRET) return out_({ ok: false, error: "wrong_key" });
   const lock = LockService.getScriptLock();
@@ -840,7 +852,7 @@ function readFields_(cfg) {
     } catch (e) {
       if (e.name === "AbortError") throw new Error("Hết thời gian chờ, kiểm tra mạng");
       if (e instanceof SyntaxError) throw new Error("Link không trả về dữ liệu. Kiểm tra đã triển khai Web app, quyền “Bất kỳ ai”");
-      if (e instanceof TypeError) throw new Error("Không kết nối được (mất mạng hoặc link sai)");
+      if (e instanceof TypeError) throw new Error("Không kết nối được tới Apps Script (mất mạng, link sai, hoặc Apps Script bị lỗi / chưa cấp quyền Drive)");
       throw e;
     } finally { clearTimeout(t); }
   }
@@ -870,6 +882,7 @@ function readFields_(cfg) {
         serverVer = verOf(j);
         if (Array.isArray(j.products)) products = j.products;
         if (Array.isArray(j.uploads)) mergeUploads(j.uploads);
+        if (serverVer >= 3) setTimeout(retryUploads, 0);
         normLayout(); save(); refreshAll();
       }
       syncErr = "";
@@ -899,7 +912,7 @@ function readFields_(cfg) {
   }
   function refreshAll() {
     if (editingId && !orders.some((o) => o.id === editingId)) resetForm();
-    renderFieldList(); renderExtraInputs(); renderProducts(); onSku(true); updatePreview(); render();
+    renderFieldList(); renderExtraInputs(); renderProducts(); renderNameSync(); onSku(true); updatePreview(); render();
   }
   function syncMsg(text, err) { const m = $("syncMsg"); m.hidden = !text; m.textContent = text || ""; m.className = "sync-msg" + (err ? " err" : ""); }
   function finishConnect(s, o, f, upload, lay, prods) {
@@ -961,7 +974,7 @@ function readFields_(cfg) {
     saveQueue(); renderSync();
     toast("Đã tắt đồng bộ. Dữ liệu vẫn còn trên máy này.");
   });
-  window.addEventListener("online", flush);
+  window.addEventListener("online", () => { flush(); retryUploads(); });
   setInterval(() => { if (sync && queue.length && !flushing) flush(); }, 30000);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") pull(false); });
 
@@ -1240,7 +1253,7 @@ function readFields_(cfg) {
     }
     switch (c.key) {
       case "date": return el("td", { className: "date-c", textContent: o.date ? o.date.split("-").reverse().join("/") : "" });
-      case "name": return el("td", { className: "name", textContent: o.name || "(không tên)" });
+      case "name": return el("td", { className: "name", textContent: o.name || (productByCode(o.sku) || {}).name || "(không tên)" });
       case "sku": return el("td", { className: "sku-c", textContent: o.sku || "" });
       case "img": { const pr = productByCode(o.sku); return el("td", { className: "img-c" }, pr && pr.img ? thumb(pr.img) : ""); }
       case "cost": return el("td", { className: "n", textContent: fmt(o.cost || 0) });
@@ -1427,6 +1440,7 @@ function readFields_(cfg) {
     if (old) Object.assign(old, rec); else products.push(rec);
     try { save(); } catch (e) { products = before; toast("Bộ nhớ trình duyệt đầy, không lưu được. Thử ảnh nhỏ hơn hoặc dùng link ảnh."); return; }
     enqueue({ op: "product_upsert", product: old || rec });
+    fillOrderNames(true);
     toast(old ? "Đã cập nhật sản phẩm " + code : "Đã thêm sản phẩm " + code);
     resetProdForm();
     renderProducts(); renderSkuList(); render();
@@ -1481,6 +1495,37 @@ function readFields_(cfg) {
     });
   }
 
+  // ----- tên đơn theo danh sách sản phẩm -----
+  // onlyEmpty = true: chỉ điền đơn chưa có tên; false: đổi cả đơn đang có tên khác
+  function nameMismatch(onlyEmpty) {
+    return orders.filter((o) => {
+      const p = productByCode(o.sku);
+      return p && p.name && (onlyEmpty ? !String(o.name || "").trim() : o.name !== p.name);
+    });
+  }
+  function fillOrderNames(onlyEmpty) {
+    const list = nameMismatch(onlyEmpty);
+    if (list.length) {
+      const now = new Date().toISOString();
+      list.forEach((o) => { const p = productByCode(o.sku); o.name = p.name; o.sku = p.code; o.updatedAt = now; });
+      try { save(); } catch (e) {}
+      if (serverVer >= 3) enqueue({ op: "orders_upsert_many", orders: list });
+      else list.forEach((o) => enqueue({ op: "upsert", order: o }));
+      render();
+    }
+    renderNameSync();
+    return list.length;
+  }
+  function renderNameSync() {
+    const n = nameMismatch(false).length;
+    $("nameSync").hidden = !n;
+    $("nameSyncMsg").textContent = n + " đơn có mã SP nhưng tên khác với danh sách sản phẩm (VD đơn ghi trước khi đổi tên SP).";
+  }
+  $("nameSyncYes").addEventListener("click", () => {
+    const n = fillOrderNames(false);
+    toast("Đã đổi tên " + n + " đơn theo danh sách sản phẩm");
+  });
+
   // ----- sao lưu / khôi phục -----
   function download(name, text, type) {
     const a = document.createElement("a");
@@ -1500,7 +1545,7 @@ function readFields_(cfg) {
       const f = fieldOf(c.key);
       if (f) { const v = (o.extra || {})[f.id]; return f.type === "check" ? (v ? "Có" : "") : f.type === "money" ? (Number(v) || 0) : (v || ""); }
       const pr = productByCode(o.sku);
-      return { date: o.date, sku: o.sku || "", img: pr && /^https?:/.test(pr.img || "") ? pr.img : "", name: o.name, cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: o.done ? "Hoàn thành" : "Tồn kho" }[c.key];
+      return { date: o.date, sku: o.sku || "", img: pr && /^https?:/.test(pr.img || "") ? pr.img : "", name: o.name || (pr ? pr.name : ""), cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: o.done ? "Hoàn thành" : "Tồn kho" }[c.key];
     };
     const lines = [header.map(q).join(",")];
     orders.slice().sort((a, b) => (a.date || "").localeCompare(b.date || "")).forEach((o) => {
@@ -1761,6 +1806,7 @@ function readFields_(cfg) {
     try { save(); } catch (e) { toast("Bộ nhớ trình duyệt đầy, không nhập được."); return; }
     if (serverVer >= 3) enqueue({ op: "products_upsert_many", products: changed });
     else changed.forEach((p) => enqueue({ op: "product_upsert", product: p }));
+    fillOrderNames(true);
     imp.products = null; renderImp("products");
     renderProducts(); renderSkuList(); render();
     toast("Đã nhập " + changed.length + " sản phẩm");
@@ -1835,23 +1881,65 @@ function readFields_(cfg) {
       r.readAsDataURL(file);
     });
   }
+  // File chờ gửi lên Drive được giữ tạm trong trình duyệt để tự thử lại (file ≤ 3MB)
+  const upKey = (id) => "so-lai-ban-hang:upfile:" + id;
+  function keepFile(id, data, mime) { try { localStorage.setItem(upKey(id), JSON.stringify({ data, mime })); return true; } catch (e) { return false; } }
+  function keptFile(id) { try { return JSON.parse(localStorage.getItem(upKey(id)) || "null"); } catch (e) { return null; } }
+  function dropFile(id) { try { localStorage.removeItem(upKey(id)); } catch (e) {} }
   async function recordUpload(kind, file, summary) {
     const u = { id: newId(), time: new Date().toISOString(), kind, fileName: file.name, ...summary, url: "", status: sync ? "saving" : "local" };
-    uploads.unshift(u); saveUploads(); renderUploads();
+    uploads.unshift(u);
+    let data = "";
+    try { if (file.size <= 8e6) data = await fileToB64(file); } catch (e) {}
+    if (data && data.length <= 4e6) u.kept = keepFile(u.id, data, file.type || "application/octet-stream");
+    saveUploads(); renderUploads();
     if (!sync) return;
+    if (!data) { u.status = "error"; u.err = "File lớn hơn 8MB nên không gửi lên Drive"; saveUploads(); renderUploads(); return; }
+    await sendUpload(u, data, file.type);
+  }
+  const sending = new Set();
+  async function sendUpload(u, data, mime) {
+    if (!sync || sending.has(u.id)) return;
+    if (!data) { const k = keptFile(u.id); if (k) { data = k.data; mime = k.mime; } }
+    if (!data) { u.status = "error"; u.err = "Không còn bản tạm của file, bấm “Chọn lại file” để gửi lên Drive"; u.kept = false; saveUploads(); renderUploads(); return; }
+    sending.add(u.id);
+    u.status = "saving"; renderUploads();
     try {
-      if (serverVer && serverVer < 3) throw new Error("Mã Apps Script bản cũ chưa hỗ trợ lưu file lên Drive");
-      if (file.size > 8e6) throw new Error("File lớn hơn 8MB nên không gửi lên Drive");
-      const data = await fileToB64(file);
-      const j = await call({ action: "upload", id: u.id, time: u.time, kind, fileName: file.name, mime: file.type || "application/octet-stream", data, summary }, null, 90000);
-      if (!j.version && !("url" in j)) throw new Error("Mã Apps Script bản cũ chưa hỗ trợ lưu file lên Drive");
-      u.url = j.url || ""; u.status = "ok";
-    } catch (e) { u.status = "error"; u.err = e.message === "bad_action" ? "Mã Apps Script bản cũ chưa hỗ trợ lưu file lên Drive" : e.message; }
+      if (serverVer && serverVer < 3) throw new Error("bad_action");
+      const summary = { rows: u.rows, added: u.added, updated: u.updated, skipped: u.skipped };
+      const j = await call({ action: "upload", id: u.id, time: u.time, kind: u.kind, fileName: u.fileName, mime: mime || "application/octet-stream", data, summary }, null, 90000);
+      if (!("url" in j)) throw new Error("bad_action");
+      u.url = j.url || ""; u.status = "ok"; u.err = ""; u.kept = false;
+      dropFile(u.id);
+    } catch (e) {
+      u.status = "error";
+      u.err = e.message === "bad_action" ? "Mã Apps Script bản cũ chưa hỗ trợ lưu file lên Drive (dán mã mới, chạy capQuyen, triển khai phiên bản mới)" : e.message;
+    }
+    sending.delete(u.id);
     saveUploads(); renderUploads();
   }
+  let retrying = false;
+  async function retryUploads() {
+    if (!sync || retrying) return;
+    retrying = true;
+    for (const u of uploads.filter((x) => (x.status === "error" || x.status === "saving") && x.kept)) await sendUpload(u);
+    retrying = false;
+  }
+  let repickFor = null;
+  const repick = el("input", { type: "file", hidden: true });
+  document.body.append(repick);
+  repick.addEventListener("change", async () => {
+    const f = repick.files[0]; repick.value = "";
+    const u = repickFor; repickFor = null;
+    if (!f || !u) return;
+    if (f.size > 8e6) { toast("File lớn hơn 8MB, không gửi lên Drive được"); return; }
+    const data = await fileToB64(f);
+    u.kept = keepFile(u.id, data, f.type || "application/octet-stream");
+    await sendUpload(u, data, f.type);
+  });
   function mergeUploads(server) {
     const ids = new Set(server.map((u) => u.id));
-    const localOnly = uploads.filter((u) => !ids.has(u.id) && u.status !== "ok");
+    const localOnly = uploads.filter((u) => !ids.has(u.id) && u.status !== "ok").map((u) => (u.status === "local" ? { ...u, status: "error", err: "Nhập lúc chưa bật đồng bộ" } : u));
     uploads = server.map((u) => ({ ...u, status: "ok" })).concat(localOnly).sort((a, b) => String(b.time).localeCompare(String(a.time)));
     saveUploads(); renderUploads();
   }
@@ -1865,8 +1953,16 @@ function readFields_(cfg) {
       const st = el("div", { className: "st" });
       if (u.url) st.append(el("a", { href: u.url, target: "_blank", rel: "noopener", textContent: "Mở file trên Drive" }));
       else if (u.status === "saving") st.append(el("span", { className: "wait", textContent: "Đang lưu lên Drive…" }));
-      else if (u.status === "error") st.append(el("span", { className: "err", textContent: "Chưa lưu lên Drive", title: u.err || "" }));
-      else if (u.status === "local") st.append(el("span", { className: "wait", textContent: "Chỉ lưu trên máy" }));
+      else if (u.status === "error" || u.status === "local") {
+        st.append(el("span", { className: u.status === "error" ? "err" : "wait", textContent: u.status === "error" ? "Chưa lưu lên Drive" : "Chỉ lưu trên máy" }));
+        if (sync) {
+          const b = u.kept
+            ? btn("Thử lại", "", () => sendUpload(u))
+            : btn("Chọn lại file", "", () => { repickFor = u; repick.click(); });
+          b.style.marginTop = "4px"; b.style.fontSize = "0.8rem"; b.style.padding = "3px 10px";
+          st.append(el("br"), b);
+        }
+      }
       box.append(el("div", { className: "uprow" },
         el("span", { className: "fn" }, el("span", { className: "kind", textContent: u.kind === "orders" ? "Đơn hàng" : "Sản phẩm" }), u.fileName || "(không tên)"),
         el("span", { className: "meta", textContent: when + " · " + (u.rows || 0) + " dòng: " + (u.added || 0) + " mới, " + (u.updated || 0) + " cập nhật, " + (u.skipped || 0) + " bỏ qua" + (u.status === "error" && u.err ? " · " + u.err : "") }),
@@ -1908,6 +2004,7 @@ function readFields_(cfg) {
   renderSkuList();
   renderProducts();
   renderUploads();
+  fillOrderNames(true);
   resetProdForm();
   resetForm();
   render();
