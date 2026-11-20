@@ -121,6 +121,7 @@ th.n, td.n { text-align: right; font-variant-numeric: tabular-nums; white-space:
 th.c, td.c { text-align: center; }
 td.name { min-width: 140px; }
 td.txt { min-width: 90px; max-width: 200px; overflow-wrap: anywhere; }
+td.date-c { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
 td.name .date { display: block; font-size: 0.78rem; color: var(--muted); }
 td.pos { color: var(--gain); font-weight: 600; } td.neg { color: var(--loss); font-weight: 600; }
 tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
@@ -143,6 +144,9 @@ details.card[open] > summary { margin-bottom: 14px; }
 .fields { display: grid; gap: 8px; }
 .frow { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1.3fr) auto; gap: 8px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
 .frow .type { font-size: 0.85rem; color: var(--muted); }
+.frow.col { grid-template-columns: auto minmax(0, 1.6fr) minmax(0, 0.8fr) minmax(0, 1.2fr) auto; }
+.frow.col.off { opacity: .6; }
+.frow .show { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
 .frow .ctrl { display: flex; gap: 4px; justify-content: end; flex-wrap: wrap; }
 .frow .ctrl button { padding: 4px 9px; font-size: 0.82rem; }
 .frow .confirm { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.85rem; color: var(--loss); }
@@ -152,10 +156,32 @@ details.card[open] > summary { margin-bottom: 14px; }
 @media (max-width: 640px) {
   .frow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .frow .name-cell { grid-column: 1 / -1; }
+  .frow.col { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); }
+  .frow.col .name-cell { grid-column: 2 / -1; }
+  .frow.col .type { grid-column: 1 / 3; }
   .frow .ctrl { grid-column: 1 / -1; justify-content: start; }
 }
 .no-fields { color: var(--muted); font-size: 0.88rem; margin: 0; }
 
+/* Đồng bộ */
+.badge { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: var(--line); color: var(--muted); margin-top: 6px; max-width: 100%; }
+.badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.badge.ok { background: var(--accent-soft); color: var(--gain); }
+.badge.busy { background: var(--stock-soft); color: var(--stock); }
+.badge.err { background: var(--loss-soft); color: var(--loss); }
+.sync-form { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.sync-form input { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 10px; color: var(--fg); font-size: 0.95rem; }
+.sync-form button { padding: 9px 16px; }
+@media (max-width: 640px) { .sync-form { grid-template-columns: minmax(0, 1fr); } }
+.sync-msg { font-size: 0.85rem; margin: 8px 0 0; }
+.sync-msg.err { color: var(--loss); }
+.choice { margin-top: 10px; padding: 12px; border: 1px solid var(--stock); border-radius: 8px; background: var(--stock-soft); display: grid; gap: 8px; font-size: 0.88rem; }
+.choice .right { justify-content: start; }
+.steps { margin: 14px 0 0; padding-left: 20px; font-size: 0.88rem; display: grid; gap: 6px; }
+.steps code, .hint code { font-size: 0.85em; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+.codebox { position: relative; margin-top: 6px; }
+.codebox pre { max-height: 220px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 0.75rem; line-height: 1.4; margin: 0; }
+.codebox button { position: absolute; top: 6px; right: 6px; font-size: 0.8rem; padding: 3px 10px; }
 .backup { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .backup .hint { flex-basis: 100%; margin: 0; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-size: 0.88rem; max-width: calc(100% - 32px); text-align: center; }
@@ -170,6 +196,7 @@ details.card[open] > summary { margin-bottom: 14px; }
     <div>
       <h1>Sổ lãi bán hàng</h1>
       <p class="sub">Ghi tiền nhập, ship, tiền thực nhận. Đơn chưa xong được tính là tồn kho.</p>
+      <span class="badge" id="syncBadge">Chỉ lưu trên máy này</span>
     </div>
     <div class="month" aria-label="Chọn tháng">
       <button id="prevM" type="button" aria-label="Tháng trước">‹</button>
@@ -191,16 +218,14 @@ details.card[open] > summary { margin-bottom: 14px; }
   <section class="card">
     <h2 id="formTitle">Ghi đơn mới</h2>
     <form id="form" autocomplete="off">
-      <div class="grid">
-        <label class="f"><span>Ngày</span><input type="date" id="fDate" required></label>
-        <label class="f wide"><span>Tên hàng / ghi chú</span><input type="text" id="fName" placeholder="VD: Áo thun trắng size M – chị Lan"></label>
-        <span></span>
-        <label class="f"><span>Tiền nhập</span><input class="money" inputmode="numeric" id="fCost" placeholder="0"></label>
-        <label class="f"><span>Tiền vận chuyển</span><input class="money" inputmode="numeric" id="fShip" placeholder="0"></label>
-        <label class="f"><span>Doanh thu thực nhận</span><input class="money" inputmode="numeric" id="fRev" placeholder="0"></label>
-        <label class="f"><span>Tiền lãi</span><input class="money" id="fProfit" disabled value="0"></label>
+      <div class="grid" id="fGrid">
+        <label class="f" data-col="date"><span class="lbl">Ngày</span><input type="date" id="fDate" required></label>
+        <label class="f wide" data-col="name"><span class="lbl">Tên hàng</span><input type="text" id="fName" placeholder="VD: Áo thun trắng size M – chị Lan"></label>
+        <label class="f" data-col="cost"><span class="lbl">Tiền nhập</span><input class="money" inputmode="numeric" id="fCost" placeholder="0"></label>
+        <label class="f" data-col="ship"><span class="lbl">Tiền ship</span><input class="money" inputmode="numeric" id="fShip" placeholder="0"></label>
+        <label class="f" data-col="revenue"><span class="lbl">Thực nhận</span><input class="money" inputmode="numeric" id="fRev" placeholder="0"></label>
+        <label class="f" data-col="profit"><span class="lbl">Tiền lãi</span><input class="money" id="fProfit" disabled value="0"></label>
       </div>
-      <div class="grid extra-grid" id="fExtra" hidden></div>
       <div class="form-foot">
         <label class="check"><input type="checkbox" id="fDone" checked> Đơn hoàn thành</label>
         <span class="preview" id="preview"></span>
@@ -232,8 +257,10 @@ details.card[open] > summary { margin-bottom: 14px; }
   </section>
 
   <details class="card" id="fieldsCard">
-    <summary>Trường tự thêm</summary>
-    <div class="fields" id="fieldList"></div>
+    <summary>Cột &amp; trường</summary>
+    <p class="hint" style="margin-top:0">Ô tích bên trái: hiện/ẩn cột. ↑ ↓: đổi vị trí (áp dụng cho bảng, form nhập và file Excel). Sửa tên ngay trong ô.</p>
+    <div class="fields" id="fieldList" style="margin-top:10px"></div>
+    <h3 class="sr">Thêm cột mới</h3>
     <div class="fields" style="margin-top:8px">
       <div class="frow new">
         <div class="name-cell"><label class="sr" for="nfName">Tên trường mới</label><input type="text" id="nfName" placeholder="Tên trường, VD: Phí sàn"></div>
@@ -251,14 +278,55 @@ details.card[open] > summary { margin-bottom: 14px; }
             <option value="none">Chỉ ghi lại</option>
           </select>
         </div>
-        <div class="ctrl"><button type="button" class="btn-primary" id="nfAdd">Thêm trường</button></div>
+        <div class="ctrl"><button type="button" class="btn-primary" id="nfAdd">Thêm cột</button></div>
       </div>
     </div>
     <p class="hint">
       Trường <b>Tiền</b> có thể trừ vào lãi (phí sàn, bao bì, quảng cáo…), cộng vào lãi (khách bo thêm, phụ thu…) hoặc chỉ ghi lại để xem.
       Khoản trừ vẫn tính cả với đơn tồn kho; khoản cộng chỉ tính khi đơn hoàn thành.
-      Các trường cố định (tiền nhập, ship, thực nhận, hoàn thành) không xoá được vì lãi và tồn kho tính từ chúng.
+      Cột cố định (ngày, tên hàng, tiền nhập, ship, thực nhận, lãi, trạng thái) không xoá hẳn được vì lãi và tồn kho tính từ chúng, nhưng có thể ẩn đi nếu không dùng. Cột tự thêm thì xoá được.
     </p>
+  </details>
+
+  <details class="card" id="syncCard">
+    <summary>Đồng bộ online (Google Sheets)</summary>
+    <div id="syncOff">
+      <p class="hint" style="margin-top:0">Lưu dữ liệu vào một Google Sheet trong Drive của bạn để nhập được trên cả máy tính và điện thoại. Làm phần cài đặt bên dưới một lần, sau đó trên mỗi máy chỉ cần dán link + mật khẩu.</p>
+      <div class="sync-form" style="margin-top:12px">
+        <label class="f"><span>Link Apps Script (kết thúc bằng /exec)</span><input type="url" id="syncUrl" placeholder="https://script.google.com/macros/s/…/exec"></label>
+        <label class="f"><span>Mật khẩu đồng bộ</span><input type="password" id="syncKey" autocomplete="off"></label>
+        <button type="button" class="btn-primary" id="syncConnect">Kết nối</button>
+      </div>
+      <p class="sync-msg" id="syncMsg" hidden></p>
+      <div class="choice" id="syncChoice" hidden>
+        <span id="syncChoiceMsg"></span>
+        <div class="right">
+          <button type="button" class="btn-primary" id="syncMerge">Gộp cả hai</button>
+          <button type="button" id="syncUseOnline">Chỉ dùng dữ liệu online</button>
+          <button type="button" id="syncCancel">Huỷ</button>
+        </div>
+      </div>
+      <ol class="steps">
+        <li>Vào <b>sheets.google.com</b>, tạo một bảng tính trống, đặt tên VD “Sổ lãi bán hàng”.</li>
+        <li>Trong bảng tính: menu <b>Tiện ích mở rộng → Apps Script</b> (Extensions → Apps Script).</li>
+        <li>Xoá hết mã có sẵn, dán đoạn mã dưới đây vào. Sửa dòng <code>const SECRET = "doi-mat-khau-nay"</code> thành mật khẩu riêng của bạn. Bấm biểu tượng lưu 💾.
+          <div class="codebox"><button type="button" id="copyCode">Sao chép</button><pre id="gsView"></pre></div>
+        </li>
+        <li>Bấm <b>Triển khai → Tùy chọn triển khai mới</b> (Deploy → New deployment). Bấm bánh răng ⚙ chọn <b>Ứng dụng web</b> (Web app).</li>
+        <li><b>Thực thi dưới dạng: Tôi</b> (Execute as: Me). <b>Người có quyền truy cập: Bất kỳ ai</b> (Anyone). Bấm <b>Triển khai</b>.</li>
+        <li>Google hỏi cấp quyền: chọn tài khoản → nếu hiện “Google chưa xác minh ứng dụng này” bấm <b>Nâng cao → Đi tới … (không an toàn)</b> → <b>Cho phép</b>. Đây là mã của chính bạn nên an toàn.</li>
+        <li>Sao chép <b>URL ứng dụng web</b> (dạng <code>https://script.google.com/macros/s/…/exec</code>), dán vào ô phía trên cùng mật khẩu, bấm <b>Kết nối</b>.</li>
+        <li>Trên điện thoại: mở trang này, vào mục này, dán cùng link + mật khẩu, bấm Kết nối.</li>
+      </ol>
+    </div>
+    <div id="syncOn" hidden>
+      <p class="hint" style="margin-top:0">Máy này đang lưu dữ liệu vào Google Sheet của bạn. Mọi thay đổi được gửi lên ngay; mở trang trên máy khác sẽ thấy số liệu mới nhất.</p>
+      <p class="sync-msg" id="syncStatus"></p>
+      <div class="right" style="margin-top:10px">
+        <button type="button" id="syncPull">Tải dữ liệu mới nhất</button>
+        <button type="button" id="syncOffBtn">Tắt đồng bộ trên máy này</button>
+      </div>
+    </div>
   </details>
 
   <section class="card">
@@ -278,6 +346,120 @@ details.card[open] > summary { margin-bottom: 14px; }
   </section>
 </div>
 <div class="toast" id="toast" hidden></div>
+
+<script type="text/plain" id="gsCode">// Sổ lãi bán hàng – lưu dữ liệu vào Google Sheet này
+const SECRET = "doi-mat-khau-nay"; // ĐỔI thành mật khẩu riêng của bạn
+
+const HEAD = ["Mã", "Ngày", "Tên hàng", "Tiền nhập", "Tiền ship", "Thực nhận", "Hoàn thành", "Trường thêm (JSON)", "Tạo lúc", "Sửa lúc"];
+const FMT = ["@", "@", "@", "#,##0", "#,##0", "#,##0", "General", "@", "@", "@"];
+
+function doGet(e) { return handle_((e && e.parameter) || {}); }
+function doPost(e) {
+  let body = {};
+  try { body = JSON.parse(e.postData.contents); } catch (x) {}
+  return handle_(body);
+}
+
+function handle_(req) {
+  if (SECRET === "doi-mat-khau-nay") return out_({ ok: false, error: "Chưa đổi mật khẩu SECRET trong Apps Script" });
+  if (req.key !== SECRET) return out_({ ok: false, error: "wrong_key" });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sh = sheet_("DonHang", true);
+    const cfg = sheet_("CaiDat", false);
+    if (req.action === "load") return out_({ ok: true, orders: readOrders_(sh), fields: readFields_(cfg) });
+    if (req.action === "ops") {
+      (req.ops || []).forEach(function (op) { apply_(sh, cfg, op); });
+      return out_({ ok: true });
+    }
+    return out_({ ok: false, error: "bad_action" });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function sheet_(name, withHead) {
+  const ss = SpreadsheetApp.getActive();
+  let sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    if (withHead) {
+      sh.getRange(1, 1, 1, HEAD.length).setValues([HEAD]).setFontWeight("bold");
+      sh.setFrozenRows(1);
+    }
+  }
+  return sh;
+}
+
+function out_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function safe_(s) { s = String(s == null ? "" : s); return /^[=+\-@]/.test(s) ? "'" + s : s; }
+
+function rowOf_(o) {
+  return [String(o.id), String(o.date || ""), safe_(o.name), Number(o.cost) || 0, Number(o.ship) || 0,
+    Number(o.revenue) || 0, !!o.done, JSON.stringify(o.extra || {}), String(o.createdAt || ""), String(o.updatedAt || "")];
+}
+
+function writeRows_(sh, startRow, rows) {
+  if (!rows.length) return;
+  const r = sh.getRange(startRow, 1, rows.length, HEAD.length);
+  r.setNumberFormats(rows.map(function () { return FMT; }));
+  r.setValues(rows);
+}
+
+function findRow_(sh, id) {
+  const n = sh.getLastRow() - 1;
+  if (n < 1) return 0;
+  const ids = sh.getRange(2, 1, n, 1).getValues();
+  for (let i = 0; i < n; i++) if (String(ids[i][0]) === String(id)) return i + 2;
+  return 0;
+}
+
+function apply_(sh, cfg, op) {
+  if (op.op === "upsert" && op.order && op.order.id) {
+    const r = findRow_(sh, op.order.id);
+    writeRows_(sh, r || sh.getLastRow() + 1, [rowOf_(op.order)]);
+  } else if (op.op === "delete" && op.id) {
+    const r = findRow_(sh, op.id);
+    if (r) sh.deleteRow(r);
+  } else if (op.op === "fields") {
+    cfg.getRange("A1").setNumberFormat("@").setValue(JSON.stringify(op.fields || []));
+  } else if (op.op === "replaceAll") {
+    if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, HEAD.length).clearContent();
+    writeRows_(sh, 2, (op.orders || []).map(rowOf_));
+    cfg.getRange("A1").setNumberFormat("@").setValue(JSON.stringify(op.fields || []));
+  }
+}
+
+function d_(v) {
+  return v instanceof Date ? Utilities.formatDate(v, Session.getScriptTimeZone(), "yyyy-MM-dd") : String(v);
+}
+
+function readOrders_(sh) {
+  const n = sh.getLastRow() - 1;
+  if (n < 1) return [];
+  return sh.getRange(2, 1, n, HEAD.length).getValues()
+    .filter(function (r) { return r[0] !== ""; })
+    .map(function (r) {
+      let extra = {};
+      try { extra = JSON.parse(r[7] || "{}"); } catch (e) {}
+      return {
+        id: String(r[0]), date: d_(r[1]), name: String(r[2]),
+        cost: Number(r[3]) || 0, ship: Number(r[4]) || 0, revenue: Number(r[5]) || 0,
+        done: r[6] === true || String(r[6]).toUpperCase() === "TRUE",
+        extra: extra, createdAt: String(r[8]), updatedAt: String(r[9])
+      };
+    });
+}
+
+function readFields_(cfg) {
+  const v = cfg.getRange("A1").getValue();
+  try { return v ? JSON.parse(v) : []; } catch (e) { return []; }
+}
+</script>
 
 <script>
 (function () {
@@ -300,6 +482,7 @@ details.card[open] > summary { margin-bottom: 14px; }
 
   let orders = [];
   let fields = [];           // [{id, name, type: money|text|check, effect: minus|plus|none}]
+  let layout = [];           // thứ tự cột: [{key: "date"|"name"|…|"f:<id>", show, label?}]
   let editingId = null;
   let confirmDelId = null;
   let confirmFieldId = null;
@@ -320,6 +503,44 @@ details.card[open] > summary { margin-bottom: 14px; }
     return o.done ? (o.revenue || 0) + extraSum(o, "plus") - base : -base;
   }
 
+  // ----- cột -----
+  const FIXED = {
+    date: { label: "Ngày", hint: "Cố định" },
+    name: { label: "Tên hàng", hint: "Cố định" },
+    cost: { label: "Tiền nhập", hint: "Cố định · trừ lãi" },
+    ship: { label: "Tiền ship", hint: "Cố định · trừ lãi" },
+    revenue: { label: "Thực nhận", hint: "Cố định · doanh thu" },
+    profit: { label: "Tiền lãi", hint: "Tự tính" },
+    status: { label: "Trạng thái", hint: "Hoàn thành / tồn kho" },
+  };
+  const DEFAULT_ORDER = ["date", "name", "cost", "ship", "revenue", "profit", "status"];
+  const fieldOf = (key) => key.startsWith("f:") ? fields.find((f) => f.id === key.slice(2)) : null;
+  const colLabel = (c) => { const f = fieldOf(c.key); return f ? f.name : (c.label || FIXED[c.key].label); };
+  const shown = (key) => { const c = layout.find((x) => x.key === key); return !c || c.show !== false; };
+  // Giữ đủ cột cố định + cột tự thêm, bỏ cột của trường đã xoá; cột mới chèn trước "Tiền lãi"
+  function normLayout() {
+    const valid = (k) => FIXED[k] || fieldOf(k);
+    const seen = new Set();
+    layout = (Array.isArray(layout) ? layout : []).filter((c) => c && valid(c.key) && !seen.has(c.key) && seen.add(c.key));
+    const insertAt = (c) => {
+      const p = layout.findIndex((x) => x.key === "profit");
+      layout.splice(p < 0 ? layout.length : p, 0, c);
+    };
+    DEFAULT_ORDER.forEach((k, i) => {
+      if (seen.has(k)) return;
+      seen.add(k);
+      if (k === "profit" || k === "status") layout.push({ key: k, show: true });
+      else layout.splice(Math.min(i, layout.length), 0, { key: k, show: true });
+    });
+    fields.forEach((f) => { const k = "f:" + f.id; if (!seen.has(k)) { seen.add(k); insertAt({ key: k, show: true }); } });
+  }
+  const cfgPayload = () => ({ v: 3, fields, layout });
+  function parseCfg(c) {
+    if (Array.isArray(c)) return { fields: c, layout: [] };
+    if (c && typeof c === "object") return { fields: Array.isArray(c.fields) ? c.fields : [], layout: Array.isArray(c.layout) ? c.layout : [] };
+    return { fields: [], layout: [] };
+  }
+
   function toast(msg) {
     const t = $("toast"); t.textContent = msg; t.hidden = false;
     clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 2400);
@@ -328,11 +549,13 @@ details.card[open] > summary { margin-bottom: 14px; }
   // ----- lưu trữ -----
   const KEY = "so-lai-ban-hang:orders";
   const KEY_F = "so-lai-ban-hang:fields";
+  const KEY_L = "so-lai-ban-hang:layout";
   function showNote(msg) { const n = $("storeNote"); n.hidden = false; n.textContent = msg; }
   function save() {
     try {
       localStorage.setItem(KEY, JSON.stringify(orders));
       localStorage.setItem(KEY_F, JSON.stringify(fields));
+      localStorage.setItem(KEY_L, JSON.stringify(layout));
     } catch (e) { showNote("Trình duyệt không cho lưu (chế độ ẩn danh?). Hãy tải file sao lưu trước khi đóng trang."); throw e; }
   }
   try {
@@ -340,15 +563,164 @@ details.card[open] > summary { margin-bottom: 14px; }
     if (raw) orders = JSON.parse(raw) || [];
     const rawF = localStorage.getItem(KEY_F);
     if (rawF) fields = JSON.parse(rawF) || [];
+    const rawL = localStorage.getItem(KEY_L);
+    if (rawL) layout = JSON.parse(rawL) || [];
   } catch (e) { showNote("Không đọc được dữ liệu cũ trong trình duyệt. Nếu có file sao lưu, hãy dùng “Khôi phục từ file”."); }
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
 
+  // ----- đồng bộ online: Google Sheets qua Apps Script -----
+  const KEY_S = "so-lai-ban-hang:sync";
+  const KEY_Q = "so-lai-ban-hang:queue";
+  let sync = null, queue = [], flushing = false, pulling = false, syncErr = "", offArmed = false, pendingConnect = null;
+  try {
+    sync = JSON.parse(localStorage.getItem(KEY_S) || "null");
+    queue = JSON.parse(localStorage.getItem(KEY_Q) || "[]") || [];
+  } catch (e) {}
+  function saveQueue() { try { localStorage.setItem(KEY_Q, JSON.stringify(queue)); } catch (e) {} }
+  async function call(body, s) {
+    s = s || sync;
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 30000);
+    try {
+      const r = await fetch(s.url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ ...body, key: s.key }), signal: ctl.signal });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error === "wrong_key" ? "Sai mật khẩu đồng bộ" : (j.error || "Lỗi Apps Script"));
+      return j;
+    } catch (e) {
+      if (e.name === "AbortError") throw new Error("Hết thời gian chờ, kiểm tra mạng");
+      if (e instanceof SyntaxError) throw new Error("Link không trả về dữ liệu. Kiểm tra đã triển khai Web app, quyền “Bất kỳ ai”");
+      if (e instanceof TypeError) throw new Error("Không kết nối được (mất mạng hoặc link sai)");
+      throw e;
+    } finally { clearTimeout(t); }
+  }
+  function enqueue(op) {
+    if (!sync) return;
+    queue.push(op); saveQueue(); flush();
+  }
+  async function flush() {
+    if (!sync || flushing || !queue.length) { renderSync(); return; }
+    flushing = true; renderSync();
+    const n = queue.length;
+    try { await call({ action: "ops", ops: queue.slice(0, n) }); queue = queue.slice(n); saveQueue(); syncErr = ""; }
+    catch (e) { syncErr = e.message; }
+    flushing = false; renderSync();
+    if (!syncErr && queue.length) flush();
+  }
+  async function pull(showToast) {
+    if (!sync || pulling) return;
+    if (queue.length) { await flush(); if (queue.length) return; }
+    pulling = true; renderSync();
+    try {
+      const j = await call({ action: "load" });
+      if (!queue.length) {            // không ghi đè nếu vừa có thay đổi trong lúc tải
+        const c = parseCfg(j.fields);
+        orders = j.orders || []; fields = c.fields;
+        if (c.layout.length) layout = c.layout;
+        normLayout(); save(); refreshAll();
+      }
+      syncErr = "";
+      if (showToast) toast("Đã tải dữ liệu mới nhất");
+    } catch (e) { syncErr = e.message; }
+    pulling = false; renderSync();
+  }
+  function renderSync() {
+    const b = $("syncBadge");
+    let text, cls;
+    if (!sync) { text = "Chỉ lưu trên máy này"; cls = ""; }
+    else if (flushing || pulling) { text = flushing ? "Đang lưu online…" : "Đang tải dữ liệu online…"; cls = "busy"; }
+    else if (syncErr) { text = queue.length ? "Chưa lưu online " + queue.length + " thay đổi" : "Lỗi đồng bộ"; cls = "err"; }
+    else { text = "Đã lưu online"; cls = "ok"; }
+    b.textContent = text; b.className = "badge " + cls;
+    b.title = syncErr || "";
+    $("syncOff").hidden = !!sync;
+    $("syncOn").hidden = !sync;
+    if (sync) {
+      const st = $("syncStatus");
+      st.className = "sync-msg" + (syncErr ? " err" : "");
+      st.textContent = syncErr
+        ? syncErr + (queue.length ? ". " + queue.length + " thay đổi đang chờ, sẽ tự gửi lại khi có mạng." : "")
+        : text + ".";
+      $("syncOffBtn").textContent = offArmed ? (queue.length ? "Còn " + queue.length + " thay đổi chưa lưu online, bấm lần nữa để vẫn tắt" : "Bấm lần nữa để tắt") : "Tắt đồng bộ trên máy này";
+    }
+  }
+  function refreshAll() {
+    if (editingId && !orders.some((o) => o.id === editingId)) resetForm();
+    renderFieldList(); renderExtraInputs(); updatePreview(); render();
+  }
+  function syncMsg(text, err) { const m = $("syncMsg"); m.hidden = !text; m.textContent = text || ""; m.className = "sync-msg" + (err ? " err" : ""); }
+  function finishConnect(s, o, f, upload, lay) {
+    sync = s;
+    try { localStorage.setItem(KEY_S, JSON.stringify(s)); } catch (e) {}
+    orders = o; fields = f; queue = [];
+    if (lay && lay.length) layout = lay;
+    normLayout();
+    if (upload) queue.push({ op: "replaceAll", orders, fields: cfgPayload() });
+    saveQueue(); save();
+    pendingConnect = null; $("syncChoice").hidden = true; syncMsg("");
+    $("syncKey").value = "";
+    refreshAll(); flush();
+    toast("Đã bật đồng bộ online");
+  }
+  $("syncConnect").addEventListener("click", async () => {
+    const url = $("syncUrl").value.trim(), key = $("syncKey").value;
+    if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) { syncMsg("Link phải có dạng https://script.google.com/macros/s/…/exec", true); return; }
+    if (!key) { syncMsg("Nhập mật khẩu đồng bộ (giống SECRET trong Apps Script)", true); return; }
+    const s = { url, key };
+    $("syncConnect").disabled = true; syncMsg("Đang kiểm tra…");
+    try {
+      const j = await call({ action: "load" }, s);
+      const c = parseCfg(j.fields);
+      const so = j.orders || [], sf = c.fields, sl = c.layout;
+      if (!orders.length && !fields.length) finishConnect(s, so, sf, false, sl);
+      else if (!so.length && !sf.length) finishConnect(s, orders, fields, true, sl.length ? sl : layout);
+      else {
+        pendingConnect = { s, so, sf, sl };
+        $("syncChoiceMsg").textContent = "Online đang có " + so.length + " đơn, máy này có " + orders.length + " đơn. “Gộp cả hai” giữ tất cả đơn (đơn trùng lấy bản online). “Chỉ dùng dữ liệu online” bỏ dữ liệu trên máy này.";
+        $("syncChoice").hidden = false; syncMsg("");
+      }
+    } catch (e) { syncMsg(e.message, true); }
+    $("syncConnect").disabled = false;
+  });
+  $("syncMerge").addEventListener("click", () => {
+    if (!pendingConnect) return;
+    const { s, so, sf, sl } = pendingConnect;
+    const ids = new Set(so.map((o) => o.id));
+    const fids = new Set(sf.map((f) => f.id));
+    finishConnect(s, so.concat(orders.filter((o) => !ids.has(o.id))), sf.concat(fields.filter((f) => !fids.has(f.id))), true, sl.length ? sl : layout);
+  });
+  $("syncUseOnline").addEventListener("click", () => {
+    if (!pendingConnect) return;
+    finishConnect(pendingConnect.s, pendingConnect.so, pendingConnect.sf, false, pendingConnect.sl);
+  });
+  $("syncCancel").addEventListener("click", () => { pendingConnect = null; $("syncChoice").hidden = true; });
+  $("syncPull").addEventListener("click", () => pull(true));
+  $("syncOffBtn").addEventListener("click", () => {
+    if (!offArmed) { offArmed = true; renderSync(); setTimeout(() => { offArmed = false; renderSync(); }, 5000); return; }
+    offArmed = false; sync = null; queue = []; syncErr = "";
+    try { localStorage.removeItem(KEY_S); } catch (e) {}
+    saveQueue(); renderSync();
+    toast("Đã tắt đồng bộ. Dữ liệu vẫn còn trên máy này.");
+  });
+  window.addEventListener("online", flush);
+  setInterval(() => { if (sync && queue.length && !flushing) flush(); }, 30000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") pull(false); });
+
+  $("gsView").textContent = $("gsCode").textContent.trim();
+  $("copyCode").addEventListener("click", async () => {
+    const text = $("gsView").textContent;
+    try { await navigator.clipboard.writeText(text); toast("Đã sao chép mã"); }
+    catch (e) {
+      const r = document.createRange(); r.selectNodeContents($("gsView"));
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      toast("Đã chọn mã, bấm Ctrl+C (hoặc Sao chép) để copy");
+    }
+  });
+
   // ----- form ghi đơn -----
   function renderExtraInputs() {
-    const box = $("fExtra");
+    const grid = $("fGrid");
     const keep = readExtra();
-    box.textContent = "";
-    box.hidden = !fields.length;
+    grid.querySelectorAll('[data-col^="f:"]').forEach((n) => n.remove());
     fields.forEach((f) => {
       const id = "fx_" + f.id;
       const title = el("span", { textContent: f.name });
@@ -364,7 +736,20 @@ details.card[open] > summary { margin-bottom: 14px; }
         else inp.value = keep[f.id] || "";
         lab = el("label", { className: "f" + (f.type === "text" ? " wide" : "") }, title, inp);
       }
-      box.append(lab);
+      lab.dataset.col = "f:" + f.id;
+      grid.append(lab);
+    });
+    // Xếp ô nhập theo thứ tự cột; ô Ngày luôn đứng đầu form
+    const byKey = {};
+    grid.querySelectorAll("[data-col]").forEach((n) => (byKey[n.dataset.col] = n));
+    grid.append(byKey.date);
+    layout.forEach((c) => {
+      const n = byKey[c.key];
+      if (!n || c.key === "date") return;
+      grid.append(n);
+      n.hidden = c.show === false;
+      const lbl = n.querySelector(".lbl");
+      if (lbl) lbl.textContent = colLabel(c);
     });
   }
   function readExtra() {
@@ -435,14 +820,17 @@ details.card[open] > summary { margin-bottom: 14px; }
     const hasExtraMoney = Object.values(o.extra).some((v) => typeof v === "number" && v);
     if (!o.cost && !o.ship && !o.revenue && !hasExtraMoney) { toast("Nhập ít nhất một khoản tiền"); return; }
     try {
-      if (editingId) {
-        const old = orders.find((x) => x.id === editingId);
+      const old = editingId && orders.find((x) => x.id === editingId);
+      if (old) {
         Object.assign(old, o, { extra: { ...(old.extra || {}), ...o.extra }, updatedAt: new Date().toISOString() });
         save();
+        enqueue({ op: "upsert", order: old });
         toast("Đã cập nhật đơn");
       } else {
-        orders.push({ ...o, id: newId(), createdAt: new Date().toISOString() });
+        const rec = { ...o, id: editingId || newId(), createdAt: new Date().toISOString() };
+        orders.push(rec);
         save();
+        enqueue({ op: "upsert", order: rec });
         toast("Đã lưu đơn");
       }
       const keepDate = $("fDate").value;
@@ -510,13 +898,12 @@ details.card[open] > summary { margin-bottom: 14px; }
     $("sStock").textContent = fmt(stock);
     $("sStockD").textContent = nStock + " đơn chưa xong (tiền nhập)";
 
-    // tiêu đề bảng
+    // tiêu đề bảng theo thứ tự cột
+    const cols = layout.filter((c) => c.show !== false);
     const th = $("thead");
     th.textContent = "";
-    const head = (t, c) => th.append(el("th", { className: c || "", textContent: t }));
-    head("Đơn"); head("Nhập", "n"); head("Ship", "n"); head("Thực nhận", "n");
-    fields.forEach((f) => head(f.name, f.type === "money" ? "n" : f.type === "check" ? "c" : ""));
-    head("Lãi", "n"); head("Trạng thái"); head("");
+    cols.forEach((c) => th.append(el("th", { className: colClass(c), textContent: colLabel(c) })));
+    th.append(el("th"));
 
     const list = scope
       .filter((o) => filter === "all" || (filter === "done" ? o.done : !o.done))
@@ -527,21 +914,7 @@ details.card[open] > summary { margin-bottom: 14px; }
     list.forEach((o) => {
       const p = profitOf(o);
       const tr = el("tr", { className: o.done ? "" : "pending" });
-      const d = o.date ? o.date.split("-").reverse().join("/") : "";
-      tr.append(el("td", { className: "name" }, o.name || "(không tên)", el("span", { className: "date", textContent: d })));
-      tr.append(el("td", { className: "n", textContent: fmt(o.cost || 0) }));
-      tr.append(el("td", { className: "n", textContent: fmt(o.ship || 0) }));
-      tr.append(el("td", { className: "n dim", textContent: fmt(o.revenue || 0) }));
-      fields.forEach((f) => {
-        const v = (o.extra || {})[f.id];
-        if (f.type === "money") tr.append(el("td", { className: "n" + (f.effect === "plus" && !o.done ? " dim" : ""), textContent: v ? fmt(Number(v)) : "" }));
-        else if (f.type === "check") tr.append(el("td", { className: "c", textContent: v ? "✓" : "" }));
-        else tr.append(el("td", { className: "txt", textContent: v || "" }));
-      });
-      tr.append(el("td", { className: "n " + (p < 0 ? "neg" : "pos"), textContent: fmt(p) }));
-      const pill = el("button", { type: "button", className: "pill " + (o.done ? "done" : "stock"), textContent: o.done ? "✓ Hoàn thành" : "Tồn kho" });
-      pill.addEventListener("click", () => toggleDone(o));
-      tr.append(el("td", {}, pill));
+      cols.forEach((c) => tr.append(cellFor(c, o, p)));
       const acts = el("td", { className: "acts" });
       if (confirmDelId === o.id) {
         acts.append(btn("Xoá thật", "btn-danger", () => del(o)), " ", btn("Không", "", () => { confirmDelId = null; render(); }));
@@ -561,11 +934,39 @@ details.card[open] > summary { margin-bottom: 14px; }
     const hasMinus = fields.some((f) => f.type === "money" && f.effect === "minus");
     $("legend").textContent = "Bấm vào ô trạng thái để chuyển đơn giữa “Hoàn thành” và “Tồn kho”. Đơn tồn kho có lãi âm bằng tiền nhập + ship" + (hasMinus ? " + các khoản trừ." : ".");
   }
+  function colClass(c) {
+    const f = fieldOf(c.key);
+    if (f) return f.type === "money" ? "n" : f.type === "check" ? "c" : "";
+    return { cost: "n", ship: "n", revenue: "n", profit: "n" }[c.key] || "";
+  }
+  function cellFor(c, o, p) {
+    const f = fieldOf(c.key);
+    if (f) {
+      const v = (o.extra || {})[f.id];
+      if (f.type === "money") return el("td", { className: "n" + (f.effect === "plus" && !o.done ? " dim" : ""), textContent: v ? fmt(Number(v)) : "" });
+      if (f.type === "check") return el("td", { className: "c", textContent: v ? "✓" : "" });
+      return el("td", { className: "txt", textContent: v || "" });
+    }
+    switch (c.key) {
+      case "date": return el("td", { className: "date-c", textContent: o.date ? o.date.split("-").reverse().join("/") : "" });
+      case "name": return el("td", { className: "name", textContent: o.name || "(không tên)" });
+      case "cost": return el("td", { className: "n", textContent: fmt(o.cost || 0) });
+      case "ship": return el("td", { className: "n", textContent: fmt(o.ship || 0) });
+      case "revenue": return el("td", { className: "n dim", textContent: fmt(o.revenue || 0) });
+      case "profit": return el("td", { className: "n " + (p < 0 ? "neg" : "pos"), textContent: fmt(p) });
+      case "status": {
+        const pill = el("button", { type: "button", className: "pill " + (o.done ? "done" : "stock"), textContent: o.done ? "✓ Hoàn thành" : "Tồn kho" });
+        pill.addEventListener("click", () => toggleDone(o));
+        return el("td", {}, pill);
+      }
+    }
+    return el("td");
+  }
   function btn(label, cls, fn) { const b = el("button", { type: "button", textContent: label }); if (cls) b.className = cls; b.addEventListener("click", fn); return b; }
 
   function toggleDone(o) {
     o.done = !o.done;
-    try { o.updatedAt = new Date().toISOString(); save(); toast(o.done ? "Đã chuyển sang hoàn thành" : "Đã chuyển vào tồn kho"); }
+    try { o.updatedAt = new Date().toISOString(); save(); enqueue({ op: "upsert", order: o }); toast(o.done ? "Đã chuyển sang hoàn thành" : "Đã chuyển vào tồn kho"); }
     catch (e) { o.done = !o.done; toast("Không cập nhật được."); }
     render();
   }
@@ -575,6 +976,7 @@ details.card[open] > summary { margin-bottom: 14px; }
     try {
       orders = orders.filter((x) => x !== o);
       save();
+      enqueue({ op: "delete", id: o.id });
       if (editingId === o.id) resetForm();
       toast("Đã xoá đơn");
     } catch (e) { orders = before; toast("Không xoá được."); }
@@ -593,64 +995,78 @@ details.card[open] > summary { margin-bottom: 14px; }
   function renderFieldList() {
     const box = $("fieldList");
     box.textContent = "";
-    if (!fields.length) { box.append(el("p", { className: "no-fields", textContent: "Chưa có trường nào. Thêm trường ở dòng bên dưới, VD: Phí sàn (Tiền, trừ vào lãi), Kênh bán (Chữ), Đã đóng gói (Ô tích)." })); }
-    fields.forEach((f, i) => {
-      const row = el("div", { className: "frow" });
-      const name = el("input", { type: "text", value: f.name, ariaLabel: "Tên trường" });
-      name.setAttribute("aria-label", "Tên trường");
+    layout.forEach((c, i) => {
+      const f = fieldOf(c.key);
+      const row = el("div", { className: "frow col" + (c.show === false ? " off" : "") });
+      const show = el("input", { type: "checkbox", className: "show" });
+      show.checked = c.show !== false;
+      show.setAttribute("aria-label", "Hiện cột " + colLabel(c));
+      show.addEventListener("change", () => { c.show = show.checked; commitFields(show.checked ? "Đã hiện cột " + colLabel(c) : "Đã ẩn cột " + colLabel(c)); });
+      const name = el("input", { type: "text", value: colLabel(c) });
+      name.setAttribute("aria-label", "Tên cột");
       name.addEventListener("change", () => {
         const v = name.value.trim();
-        if (!v) { name.value = f.name; toast("Tên trường không được để trống"); return; }
-        f.name = v; commitFields("Đã đổi tên trường");
+        if (f) {
+          if (!v) { name.value = f.name; toast("Tên cột không được để trống"); return; }
+          f.name = v;
+        } else if (!v || v === FIXED[c.key].label) delete c.label;
+        else c.label = v;
+        commitFields("Đã đổi tên cột");
       });
-      const eff = f.type === "money"
-        ? effectSelect(f.effect, (v) => { f.effect = v; commitFields("Đã đổi cách tính " + f.name); })
-        : el("span", { className: "type", textContent: "—" });
-      if (f.type === "money") eff.setAttribute("aria-label", "Ảnh hưởng tới lãi");
-      const up = btn("↑", "", () => moveField(i, -1)); up.disabled = i === 0; up.setAttribute("aria-label", "Đưa lên");
-      const down = btn("↓", "", () => moveField(i, 1)); down.disabled = i === fields.length - 1; down.setAttribute("aria-label", "Đưa xuống");
-      const rm = btn("Xoá", "", () => { confirmFieldId = f.id; renderFieldList(); });
+      let eff;
+      if (f && f.type === "money") {
+        eff = effectSelect(f.effect, (v) => { f.effect = v; commitFields("Đã đổi cách tính " + f.name); });
+        eff.setAttribute("aria-label", "Ảnh hưởng tới lãi");
+      } else eff = el("span");
+      const up = btn("↑", "", () => moveCol(i, -1)); up.disabled = i === 0; up.setAttribute("aria-label", "Đưa lên");
+      const down = btn("↓", "", () => moveCol(i, 1)); down.disabled = i === layout.length - 1; down.setAttribute("aria-label", "Đưa xuống");
+      const ctrl = el("div", { className: "ctrl" }, up, down);
+      if (f) ctrl.append(btn("Xoá", "", () => { confirmFieldId = f.id; renderFieldList(); }));
       row.append(
+        show,
         el("div", { className: "name-cell" }, name),
-        el("span", { className: "type", textContent: TYPE_LABEL[f.type] }),
+        el("span", { className: "type", textContent: f ? TYPE_LABEL[f.type] + " · tự thêm" : FIXED[c.key].hint }),
         eff,
-        el("div", { className: "ctrl" }, up, down, rm)
+        ctrl
       );
-      if (confirmFieldId === f.id) {
+      if (f && confirmFieldId === f.id) {
         const used = orders.filter((o) => { const v = (o.extra || {})[f.id]; return v !== undefined && v !== "" && v !== 0 && v !== false; }).length;
         row.append(el("div", { className: "confirm" },
-          "Xoá trường “" + f.name + "”" + (used ? " và dữ liệu của nó trong " + used + " đơn" : "") + "?",
-          btn("Xoá trường", "btn-danger", () => removeField(f)),
+          "Xoá cột “" + f.name + "”" + (used ? " và dữ liệu của nó trong " + used + " đơn" : "") + "?",
+          btn("Xoá cột", "btn-danger", () => removeField(f)),
           btn("Không", "", () => { confirmFieldId = null; renderFieldList(); })));
       }
       box.append(row);
     });
   }
   function commitFields(msg) {
-    try { save(); if (msg) toast(msg); } catch (e) { toast("Không lưu được cài đặt."); }
+    normLayout();
+    try { save(); enqueue({ op: "fields", fields: cfgPayload() }); if (msg) toast(msg); } catch (e) { toast("Không lưu được cài đặt."); }
     renderFieldList(); renderExtraInputs(); updatePreview(); render();
   }
-  function moveField(i, d) {
+  function moveCol(i, d) {
     const j = i + d;
-    if (j < 0 || j >= fields.length) return;
-    [fields[i], fields[j]] = [fields[j], fields[i]];
+    if (j < 0 || j >= layout.length) return;
+    [layout[i], layout[j]] = [layout[j], layout[i]];
     commitFields();
   }
   function removeField(f) {
     confirmFieldId = null;
     fields = fields.filter((x) => x !== f);
-    orders.forEach((o) => { if (o.extra) delete o.extra[f.id]; });
-    commitFields("Đã xoá trường " + f.name);
+    orders.forEach((o) => {
+      if (o.extra && f.id in o.extra) { delete o.extra[f.id]; enqueue({ op: "upsert", order: o }); }
+    });
+    commitFields("Đã xoá cột " + f.name);
   }
   $("nfType").addEventListener("change", () => { $("nfEffect").disabled = $("nfType").value !== "money"; });
   function addField() {
     const name = $("nfName").value.trim();
-    if (!name) { toast("Nhập tên trường trước"); $("nfName").focus(); return; }
-    if (fields.some((f) => f.name.toLowerCase() === name.toLowerCase())) { toast("Đã có trường tên “" + name + "”"); return; }
+    if (!name) { toast("Nhập tên cột trước"); $("nfName").focus(); return; }
+    if (layout.some((c) => colLabel(c).toLowerCase() === name.toLowerCase())) { toast("Đã có cột tên “" + name + "”"); return; }
     const type = $("nfType").value;
     fields.push({ id: newId(), name, type, effect: type === "money" ? $("nfEffect").value : "none" });
     $("nfName").value = "";
-    commitFields("Đã thêm trường " + name);
+    commitFields("Đã thêm cột " + name);
   }
   $("nfAdd").addEventListener("click", addField);
   $("nfName").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addField(); } });
@@ -664,17 +1080,20 @@ details.card[open] > summary { margin-bottom: 14px; }
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
   $("exportJson").addEventListener("click", () => {
-    download("so-lai-ban-hang-" + today() + ".json", JSON.stringify({ version: 2, fields, orders }, null, 1), "application/json");
+    download("so-lai-ban-hang-" + today() + ".json", JSON.stringify({ version: 3, fields, layout, orders }, null, 1), "application/json");
   });
   $("exportCsv").addEventListener("click", () => {
     const q = (v) => '"' + String(v ?? "").replace(/"/g, '""') + '"';
-    const header = ["Ngày", "Tên hàng", "Tiền nhập", "Tiền ship", "Doanh thu thực nhận"]
-      .concat(fields.map((f) => f.name + (f.type === "money" && f.effect !== "none" ? " (" + EFFECT_LABEL[f.effect] + ")" : "")))
-      .concat(["Tiền lãi", "Trạng thái"]);
+    const cols = layout.filter((c) => c.show !== false);
+    const header = cols.map((c) => { const f = fieldOf(c.key); return colLabel(c) + (f && f.type === "money" && f.effect !== "none" ? " (" + EFFECT_LABEL[f.effect] + ")" : ""); });
+    const val = (c, o) => {
+      const f = fieldOf(c.key);
+      if (f) { const v = (o.extra || {})[f.id]; return f.type === "check" ? (v ? "Có" : "") : f.type === "money" ? (Number(v) || 0) : (v || ""); }
+      return { date: o.date, name: o.name, cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: o.done ? "Hoàn thành" : "Tồn kho" }[c.key];
+    };
     const lines = [header.map(q).join(",")];
     orders.slice().sort((a, b) => (a.date || "").localeCompare(b.date || "")).forEach((o) => {
-      const ex = fields.map((f) => { const v = (o.extra || {})[f.id]; return f.type === "check" ? (v ? "Có" : "") : f.type === "money" ? (Number(v) || 0) : (v || ""); });
-      lines.push([o.date, o.name, o.cost || 0, o.ship || 0, o.revenue || 0].concat(ex, [profitOf(o), o.done ? "Hoàn thành" : "Tồn kho"]).map(q).join(","));
+      lines.push(cols.map((c) => q(val(c, o))).join(","));
     });
     download("so-lai-ban-hang-" + today() + ".csv", "﻿" + lines.join("\r\n"), "text/csv;charset=utf-8");
   });
@@ -688,8 +1107,9 @@ details.card[open] > summary { margin-bottom: 14px; }
       const list = Array.isArray(data) ? data : data.orders;
       if (!Array.isArray(list)) throw new Error("sai định dạng");
       const fl = !Array.isArray(data) && Array.isArray(data.fields) ? data.fields.filter((x) => x && x.id && x.name && TYPE_LABEL[x.type]) : null;
-      pendingImport = { orders: list.filter((o) => o && typeof o === "object").map((o) => ({ ...o, id: o.id || newId() })), fields: fl };
-      $("importMsg").textContent = "File có " + pendingImport.orders.length + " đơn" + (fl ? " và " + fl.length + " trường tự thêm" : "") + ", sẽ thay toàn bộ " + orders.length + " đơn hiện tại.";
+      const lay = !Array.isArray(data) && Array.isArray(data.layout) ? data.layout : null;
+      pendingImport = { orders: list.filter((o) => o && typeof o === "object").map((o) => ({ ...o, id: o.id || newId() })), fields: fl, layout: lay };
+      $("importMsg").textContent = "File có " + pendingImport.orders.length + " đơn" + (fl ? " và " + fl.length + " cột tự thêm" : "") + ", sẽ thay toàn bộ " + orders.length + " đơn hiện tại.";
       $("importConfirm").hidden = false;
     } catch (err) { toast("File không đúng định dạng sao lưu của sổ này."); }
   });
@@ -698,15 +1118,20 @@ details.card[open] > summary { margin-bottom: 14px; }
     if (!pendingImport) return;
     orders = pendingImport.orders;
     if (pendingImport.fields) fields = pendingImport.fields;
+    if (pendingImport.layout) layout = pendingImport.layout;
+    normLayout();
     pendingImport = null; $("importConfirm").hidden = true;
-    try { save(); toast("Đã khôi phục " + orders.length + " đơn"); } catch (e) {}
+    try { save(); enqueue({ op: "replaceAll", orders, fields: cfgPayload() }); toast("Đã khôi phục " + orders.length + " đơn"); } catch (e) {}
     renderFieldList(); renderExtraInputs(); resetForm(); render();
   });
 
+  normLayout();
   renderFieldList();
   renderExtraInputs();
   resetForm();
   render();
+  renderSync();
+  if (sync) { if (queue.length) flush().then(() => pull(false)); else pull(false); }
 })();
 </script>
 </body>
