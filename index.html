@@ -61,7 +61,11 @@ h1 { font-family: var(--font-display); font-weight: 600; font-size: 1.6rem; marg
 .sub { color: var(--muted); font-size: 0.88rem; margin: 2px 0 0; }
 .month { display: flex; align-items: center; gap: 6px; }
 .month button { min-width: 34px; height: 34px; }
-.month-label { font-weight: 600; min-width: 112px; text-align: center; }
+.month { flex-wrap: wrap; justify-content: flex-end; }
+.rng { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); }
+.rng input { font: inherit; color: var(--fg); padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.rng-btns { display: flex; gap: 4px; }
+.rng-btns button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 button, input, select { font: inherit; color: inherit; }
 button {
   border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 12px; cursor: pointer;
@@ -132,6 +136,7 @@ td.name { min-width: 120px; max-width: 220px; }
 .clip.open { white-space: normal; overflow-wrap: anywhere; }
 td.ord-c input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; margin: 0; vertical-align: middle; }
 td.txt { min-width: 70px; max-width: 160px; }
+td.txt.full, #rows td.txt.full { max-width: none; white-space: nowrap; }
 td { white-space: nowrap; }
 td.date-c { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
 td.name .date { display: block; font-size: 0.78rem; color: var(--muted); }
@@ -264,6 +269,39 @@ td.n .stack { justify-items: end; }
 .items-foot .sum { font-size: 0.88rem; color: var(--muted); }
 .items-foot .sum b { color: var(--fg); }
 .irow .wide2 { grid-column: span 2; }
+/* Bảng tổng theo sản phẩm */
+.sum-wrap { overflow-x: auto; margin-top: 12px; }
+.sumt td { padding: 7px 8px; vertical-align: top; }
+.sumt td.var { white-space: normal; overflow-wrap: anywhere; min-width: 110px; max-width: 380px; }
+.sumt td.nm { min-width: 140px; max-width: 260px; }
+.sumt td.sku { font-weight: 600; white-space: nowrap; }
+.sumt td.z { color: var(--line); }
+.sumt td.tot { font-weight: 700; }
+.sumt tr.sub-end td { border-bottom: 1px solid var(--line); }
+.sumt td.isep { border-bottom: 1px dashed var(--line); }
+.sumt tr.grand td { font-weight: 700; border-top: 2px solid var(--line); border-bottom: 0; }
+.sumt tr.grand td.n { color: var(--fg); }
+.sumt td.c-ord { color: var(--ord); } .sumt td.c-done { color: var(--accent); } .sumt td.c-stk { color: var(--stk); }
+.sum-note { font-size: 0.82rem; color: var(--muted); }
+#sumNote { margin: 6px 0 0; }
+.sumt td.neg { color: var(--loss); } .sumt td.pos { color: var(--gain); }
+/* Biểu đồ cột ngang top 10 */
+.bars { display: grid; gap: 4px; margin-top: 14px; font-size: 0.85rem; max-width: 900px; }
+.bars:empty { display: none; }
+.bars .bl { color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bars .bl small { color: var(--muted); }
+.bars .bt { position: relative; height: 18px; }
+.bars .bt i { position: absolute; left: 0; top: 0; bottom: 0; min-width: 2px; background: var(--accent); border-radius: 0 4px 4px 0; transition: opacity .15s; }
+.bars .bt i.neg { background: var(--loss); }
+.bars .bv { font-variant-numeric: tabular-nums; color: var(--fg); font-weight: 600; text-align: right; }
+.bars .row { display: grid; grid-template-columns: 260px minmax(0, 1fr) 90px; gap: 10px; align-items: center; padding: 2px 0; cursor: default; }
+.bars .row:hover i { opacity: 0.75; }
+.bars .row:hover .bl { text-decoration: underline; }
+.sumt .short, .sumt .sku-nm { display: none; }
+.sumt .sku-nm { font-weight: 400; font-size: 0.8rem; color: var(--muted); }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: 0; border: 1px solid var(--line); }
+.dot.ord { background: var(--row-ord); border-color: var(--ord); } .dot.done { background: var(--row-done); border-color: var(--accent); } .dot.stk { background: var(--row-stk); border-color: var(--stk); } .dot.new { background: var(--surface); }
+.filters .cnt { font-weight: 400; opacity: 0.75; margin-left: 3px; }
 /* Đơn nhiều SP: mỗi SP 1 hàng, ô của đơn gộp dọc */
 #rows td.isep { border-bottom: 1px dashed var(--line); }
 #rows tr.grp td[rowspan] { vertical-align: middle; }
@@ -303,6 +341,19 @@ td.n .stack { justify-items: end; }
   #rows td { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 2px 0; border: 0; min-width: 0; max-width: none; font-size: 0.92rem; text-align: right; }
   #rows td::before { content: attr(data-label); display: inline-block; color: var(--muted); font-size: 0.8rem; font-weight: 400; text-align: left; white-space: nowrap; }
   #rows td:empty { display: none; }
+  #rows td.txt.full { grid-column: 1 / -1; white-space: normal; overflow-wrap: anywhere; }
+  .bars .row { grid-template-columns: 110px minmax(0, 1fr) 70px; gap: 8px; }
+  .rng input { font-size: 16px; padding: 5px 6px; }
+  .month { justify-content: flex-start; }
+  #rows td.st-c { grid-column: 1 / -1; justify-content: start; gap: 12px; }
+  .sumt { font-size: 0.85rem; }
+  .sumt th, .sumt td { padding: 6px 4px; }
+  .sumt th { font-size: 0.66rem; letter-spacing: 0; }
+  .sumt .nm, .sumt .long, .dot { display: none; }
+  .sumt .short { display: inline; }
+  .sumt td.sku .sku-nm { display: block; max-width: 110px; }
+  .sumt td.var { min-width: 90px; }
+  .sumt td.nm { min-width: 110px; max-width: 160px; }
   #rows td > .clip { min-width: 0; }
   #rows td.name { order: -3; grid-column: 1 / -1; font-weight: 600; font-size: 1rem; justify-content: start; text-align: left; }
   #rows td.name .stack { justify-items: start; }
@@ -332,11 +383,15 @@ td.n .stack { justify-items: end; }
       <p class="sub">Ghi tiền nhập, ship, tiền thực nhận. Đơn chưa xong được tính là tồn kho.</p>
       <span class="badge" id="syncBadge">Chỉ lưu trên máy này</span>
     </div>
-    <div class="month" id="monthNav" aria-label="Chọn tháng">
-      <button id="prevM" type="button" aria-label="Tháng trước">‹</button>
-      <span class="month-label" id="monthLabel"></span>
-      <button id="nextM" type="button" aria-label="Tháng sau">›</button>
-      <button id="allM" type="button">Tất cả</button>
+    <div class="month" id="monthNav" aria-label="Chọn khoảng ngày">
+      <label class="rng">Từ <input type="date" id="dFrom"></label>
+      <label class="rng">đến <input type="date" id="dTo"></label>
+      <div class="rng-btns">
+        <button id="prevM" type="button" aria-label="Tháng trước" title="Tháng trước">‹</button>
+        <button id="thisM" type="button">Tháng này</button>
+        <button id="nextM" type="button" aria-label="Tháng sau" title="Tháng sau">›</button>
+        <button id="allM" type="button">Tất cả</button>
+      </div>
     </div>
   </header>
 
@@ -410,6 +465,27 @@ td.n .stack { justify-items: end; }
     </div>
     <p class="empty" id="empty"></p>
     <p class="legend" id="legend"></p>
+  </section>
+
+  <section class="card">
+    <div class="list-head">
+      <h2>Tổng theo sản phẩm</h2>
+      <label class="rng">Xếp theo <select id="sumSort">
+        <option value="sold">SL bán nhiều nhất</option>
+        <option value="var">Phân loại bán nhiều nhất</option>
+        <option value="ppu">Lãi / SP cao nhất</option>
+        <option value="tot">Tổng SL (mọi trạng thái)</option>
+      </select></label>
+    </div>
+    <p class="sum-note" id="sumNote"></p>
+    <div class="bars" id="sumChart" role="img"></div>
+    <div class="sum-wrap">
+      <table class="sumt">
+        <thead><tr><th>Mã SP</th><th class="nm">Tên hàng</th><th>Phân loại</th><th class="n"><i class="dot new"></i><span class="long">Chưa order</span><span class="short">Chưa</span></th><th class="n"><i class="dot ord"></i><span class="long">Đã order</span><span class="short">Đã đặt</span></th><th class="n"><i class="dot done"></i><span class="long">Hoàn thành</span><span class="short">Xong</span></th><th class="n"><i class="dot stk"></i><span class="long">Tồn kho</span><span class="short">Tồn</span></th><th class="n"><span class="long">Tổng SL</span><span class="short">Tổng</span></th><th class="n">Lãi</th><th class="n"><span class="long">Lãi / SP</span><span class="short">Lãi/SP</span></th></tr></thead>
+        <tbody id="sumRows"></tbody>
+      </table>
+    </div>
+    <p class="empty" id="sumEmpty" hidden>Chưa có sản phẩm nào trong khoảng này.</p>
   </section>
 
   <section class="card imp">
@@ -848,7 +924,9 @@ function readFields_(cfg) {
   let confirmFieldId = null;
   let filter = "all";
   const now = new Date();
-  let month = { y: now.getFullYear(), m: now.getMonth() + 1, all: false };
+  // khoảng ngày lọc (yyyy-mm-dd, "" = không giới hạn); mặc định từ đầu tháng đến hôm nay
+  const ymd = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  let range = { from: ymd(new Date(now.getFullYear(), now.getMonth(), 1)), to: ymd(now) };
 
   // ----- tính tiền -----
   const ST_CLS = { new: "new", ord: "ord", done: "done", stock: "stk" };
@@ -1441,17 +1519,21 @@ function readFields_(cfg) {
   }
 
   // ----- tháng & lọc -----
-  const inMonth = (o) => month.all || (o.date || "").slice(0, 7) === month.y + "-" + String(month.m).padStart(2, "0");
+  const inMonth = (o) => { const k = dKey(o); return (!range.from || (k && k >= range.from)) && (!range.to || !k || k <= range.to); };
+  const dmy = (k) => k.split("-").reverse().join("/");
+  const rangeText = () => !range.from && !range.to ? "cả sổ" : (range.from ? dmy(range.from) : "đầu sổ") + " – " + (range.to ? dmy(range.to) : "nay");
+  function setRange(from, to) { range = { from, to }; render(); }
   function shiftMonth(d) {
-    month.all = false;
-    month.m += d;
-    if (month.m < 1) { month.m = 12; month.y--; }
-    if (month.m > 12) { month.m = 1; month.y++; }
-    render();
+    const base = range.from ? new Date(range.from + "T00:00:00") : new Date();
+    const a = new Date(base.getFullYear(), base.getMonth() + d, 1), b = new Date(base.getFullYear(), base.getMonth() + d + 1, 0);
+    setRange(ymd(a), ymd(b) > today() && ymd(a) <= today() ? today() : ymd(b));
   }
   $("prevM").addEventListener("click", () => shiftMonth(-1));
   $("nextM").addEventListener("click", () => shiftMonth(1));
-  $("allM").addEventListener("click", () => { month.all = !month.all; render(); });
+  $("thisM").addEventListener("click", () => setRange(ymd(new Date(now.getFullYear(), now.getMonth(), 1)), today()));
+  $("allM").addEventListener("click", () => setRange("", ""));
+  $("dFrom").addEventListener("change", () => setRange($("dFrom").value, range.to));
+  $("dTo").addEventListener("change", () => setRange(range.from, $("dTo").value));
   document.querySelectorAll(".filters button").forEach((b) => b.addEventListener("click", () => {
     filter = b.dataset.f;
     document.querySelectorAll(".filters button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
@@ -1462,9 +1544,102 @@ function readFields_(cfg) {
   // Trạng thái: hoàn thành (xanh) > đã order (vàng) > tồn kho (cam)
   // khoá sắp xếp ngày: chấp nhận yyyy-mm-dd, dd/mm/yyyy, ISO có giờ
   const dKey = (o) => { const d = String(o.date || ""); const m = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0") : d.slice(0, 10); };
+  // Bảng tổng: gom theo mã SP (không mã thì theo tên), tách theo phân loại, đếm SL theo trạng thái
+  function isVarField(f) { return !!f && f.type === "text" && /^(phan loai|mau|size|mau size|bien the)$/.test(norm(f.name)); }
+  // Bảng tổng: gom theo mã SP (không mã thì theo tên), tách theo phân loại, đếm SL theo trạng thái.
+  // Lãi chỉ tính đơn hoàn thành; đơn nhiều SP chia (thực nhận + khoản cộng − ship − khoản trừ) theo tỷ lệ tiền nhập (không có tiền nhập thì theo SL).
+  let sumSort = "sold";
+  $("sumSort").addEventListener("change", () => { sumSort = $("sumSort").value; render(); });
+  function renderSummary(scope) {
+    const varFields = fields.filter(isVarField);
+    const groups = new Map();
+    const blank = () => ({ new: 0, ord: 0, done: 0, stock: 0, tot: 0, profit: 0 });
+    scope.forEach((o) => {
+      const st = stOf(o), its = orderItems(o);
+      const totCost = its.reduce((a, it) => a + (Number(it.cost) || 0), 0), totQty = its.reduce((a, it) => a + (Number(it.qty) || 1), 0);
+      const pool = (o.revenue || 0) + extraSum(o, "plus") - (o.ship || 0) - extraSum(o, "minus");
+      its.forEach((it) => {
+        const name = String(it.name || "").trim(), sku = String(it.sku || "").trim();
+        if (!sku && !name) return;
+        const gk = sku ? "s:" + sku.toLowerCase() : "n:" + name.toLowerCase();
+        let g = groups.get(gk);
+        if (!g) { g = { sku, name: (sku && (productByCode(sku) || {}).name) || name, vars: new Map(), ...blank() }; groups.set(gk, g); }
+        if (!g.name) g.name = name;
+        const vl = varFields.map((f) => String((it.f || {})[f.id] || "").trim()).filter(Boolean).join(", ");
+        let v = g.vars.get(vl.toLowerCase());
+        if (!v) { v = { label: vl, g, ...blank() }; g.vars.set(vl.toLowerCase(), v); }
+        const q = Number(it.qty) || 1;
+        const pr = st === "done" ? pool * (totCost ? (Number(it.cost) || 0) / totCost : q / totQty) - (Number(it.cost) || 0) : 0;
+        for (const t of [v, g]) { t[st] += q; t.tot += q; t.profit += pr; }
+      });
+    });
+    const ppu = (t) => (t.done ? t.profit / t.done : -Infinity);
+    const key = { sold: (t) => t.done, tot: (t) => t.tot, ppu, var: (t) => t.done }[sumSort];
+    const cmp = (a, b) => key(b) - key(a) || b.tot - a.tot;
+    const list = [...groups.values()].sort((a, b) => cmp(a, b) || (a.sku || a.name).localeCompare(b.sku || b.name, "vi", { numeric: true }));
+    const flat = sumSort === "var";
+    const blocks = flat
+      ? list.flatMap((g) => [...g.vars.values()]).sort(cmp).map((v) => [v])
+      : list.map((g) => [...g.vars.values()].sort((a, b) => cmp(a, b) || a.label.localeCompare(b.label, "vi", { numeric: true })));
+    const tb = $("sumRows"); tb.textContent = "";
+    const grand = blank();
+    const numTd = (n, cls) => el("td", { className: "n " + (n ? cls || "" : "z"), textContent: n ? fmt(n) : "–" });
+    const moneyTds = (t) => [
+      el("td", { className: "n " + (t.done ? (t.profit < 0 ? "neg" : "pos") : "z"), textContent: t.done ? fmt(Math.round(t.profit)) : "–" }),
+      el("td", { className: "n " + (t.done ? (t.profit < 0 ? "neg" : "pos") : "z"), textContent: t.done ? fmt(Math.round(t.profit / t.done)) : "–" }),
+    ];
+    const cntTds = (t, cls) => [numTd(t.new), numTd(t.ord, "c-ord"), numTd(t.done, "c-done"), numTd(t.stock, "c-stk"), numTd(t.tot, "tot"), ...moneyTds(t)].map((c) => (cls && c.classList.add(cls), c));
+    blocks.forEach((vs) => {
+      const g = vs[0].g, n = vs.length;
+      vs.forEach((v, k) => {
+        const tr = el("tr", { className: n === 1 ? "sub-end" : "" });
+        if (!k) {
+          const a = el("td", { className: "sku" }, g.sku || "–", el("span", { className: "sku-nm" }, clip(g.name || ""))), b = el("td", { className: "nm" }, clip(g.name || ""));
+          if (n > 1) { a.rowSpan = n; b.rowSpan = n; }
+          tr.append(a, b);
+        }
+        tr.append(el("td", { className: "var" + (n > 1 ? " isep" : ""), textContent: v.label || "—" }), ...cntTds(v, n > 1 ? "isep" : ""));
+        tb.append(tr);
+        for (const x of Object.keys(grand)) grand[x] += v[x];
+      });
+      if (n > 1) {
+        const tr = el("tr", { className: "sub-end" });
+        tr.append(el("td", { className: "sum-note", textContent: "Cộng" }), el("td", { className: "nm" }), el("td"), ...cntTds(g, "tot"));
+        tb.append(tr);
+      }
+    });
+    if (blocks.length) {
+      const tr = el("tr", { className: "grand" });
+      tr.append(el("td", { textContent: "Tổng" }), el("td", { className: "nm" }), el("td", { className: "sum-note", textContent: list.length + " mã" }), ...cntTds(grand));
+      tb.append(tr);
+    }
+    $("sumEmpty").hidden = !!blocks.length;
+    const what = { sold: "SL đã bán (đơn hoàn thành)", var: "SL bán theo phân loại", ppu: "lãi trung bình mỗi sản phẩm đã bán", tot: "tổng SL mọi trạng thái" }[sumSort];
+    $("sumNote").textContent = "Khoảng " + rangeText() + " · biểu đồ: top 10 theo " + what + ". Lãi chỉ tính đơn hoàn thành.";
+    // biểu đồ top 10
+    const chart = $("sumChart"); chart.textContent = "";
+    const pts = (flat ? blocks.map((b) => b[0]) : list)
+      .map((t) => ({ t, val: sumSort === "ppu" ? (t.done ? t.profit / t.done : null) : key(t) }))
+      .filter((p) => p.val !== null && p.val !== 0).slice(0, 10);
+    const max = Math.max(1, ...pts.map((p) => Math.abs(p.val)));
+    chart.setAttribute("aria-label", "Top " + pts.length + " theo " + what);
+    pts.forEach(({ t, val }) => {
+      const g = t.g || t, lab = g.sku || g.name;
+      const v = sumSort === "ppu" ? Math.round(val) : val;
+      const tip = (g.sku ? g.sku + " – " : "") + (g.name || "") + (flat ? " · " + (t.label || "không phân loại") : "") + "\n" + what + ": " + fmt(v) + (sumSort !== "ppu" ? "" : " (bán " + t.done + ")");
+      const row = el("div", { className: "row", title: tip });
+      const bl = el("span", { className: "bl" }, lab);
+      if (flat) bl.append(el("small", { textContent: " · " + (t.label || "—") }));
+      else if (g.sku && g.name) bl.append(el("small", { textContent: " " + g.name }));
+      const bar = el("i", { className: v < 0 ? "neg" : "" }); bar.style.width = (Math.abs(val) / max * 100).toFixed(1) + "%";
+      row.append(bl, el("span", { className: "bt" }, bar), el("span", { className: "bv", textContent: fmt(v) }));
+      chart.append(row);
+    });
+  }
   function render() {
-    $("monthLabel").textContent = month.all ? "Mọi tháng" : "Tháng " + month.m + "/" + month.y;
-    $("allM").setAttribute("aria-pressed", String(month.all));
+    $("dFrom").value = range.from; $("dTo").value = range.to;
+    $("allM").setAttribute("aria-pressed", String(!range.from && !range.to));
+    $("thisM").setAttribute("aria-pressed", String(range.from === ymd(new Date(now.getFullYear(), now.getMonth(), 1)) && range.to === today()));
     const scope = orders.filter(inMonth);
     let rev = 0, plus = 0, cost = 0, ship = 0, other = 0, profit = 0, stock = 0, nDone = 0, nStock = 0, nOrd = 0, nNew = 0;
     scope.forEach((o) => {
@@ -1521,10 +1696,17 @@ function readFields_(cfg) {
     if (!list.length) {
       empty.hidden = false;
       empty.textContent = orders.length
-        ? "Không có đơn nào trong " + (month.all ? "sổ" : "tháng " + month.m + "/" + month.y) + " theo bộ lọc này."
+        ? "Không có đơn nào trong khoảng " + rangeText() + " theo bộ lọc này."
         : "Chưa có đơn nào. Điền form phía trên rồi bấm “Lưu đơn” để ghi đơn đầu tiên.";
     } else empty.hidden = true;
     const hasMinus = fields.some((f) => f.type === "money" && f.effect === "minus");
+    renderSummary(scope);
+    const cnt = { all: scope.length, new: 0, ord: 0, done: 0, stock: 0 };
+    scope.forEach((o) => cnt[stOf(o)]++);
+    document.querySelectorAll(".filters button").forEach((b) => {
+      let c = b.querySelector(".cnt"); if (!c) { c = el("span", { className: "cnt" }); b.append(c); }
+      c.textContent = cnt[b.dataset.f];
+    });
     $("legend").textContent = "Nền trắng: chưa order · vàng: đã order · xanh: hoàn thành · đỏ: tồn kho. Bấm ô trạng thái để đổi. Đơn chưa xong có lãi âm bằng tiền nhập + ship" + (hasMinus ? " + các khoản trừ." : ".");
   }
   function colClass(c) {
@@ -1538,7 +1720,7 @@ function readFields_(cfg) {
       const v = (o.extra || {})[f.id];
       if (f.type === "money") return el("td", { className: "n" + (f.effect === "plus" && !o.done ? " dim" : ""), textContent: v ? fmt(Number(v)) : "" });
       if (f.type === "check") return el("td", { className: "c", textContent: v ? "✓" : "" });
-      return el("td", { className: "txt" }, v ? clip(String(v)) : "");
+      return isVarField(f) ? el("td", { className: "txt full", textContent: v ? String(v) : "" }) : el("td", { className: "txt" }, v ? clip(String(v)) : "");
     }
     switch (c.key) {
       case "date": return el("td", { className: "date-c", textContent: o.date ? o.date.split("-").reverse().join("/") : "" });
@@ -1564,7 +1746,7 @@ function readFields_(cfg) {
         ["new", "ord", "done", "stock"].forEach((v) => pill.append(el("option", { value: v, textContent: (v === "done" ? "✓ " : "") + ST_LABEL[v] })));
         pill.value = st;
         pill.addEventListener("change", () => setStatus(o, pill.value));
-        return el("td", {}, pill);
+        return el("td", { className: "st-c" }, pill);
       }
     }
     return el("td");
@@ -1577,7 +1759,7 @@ function readFields_(cfg) {
   }
   function itemCell(c, o, it) {
     const f = fieldOf(c.key);
-    if (f) { const v = (it.f || {})[f.id]; return el("td", { className: "txt" }, v ? clip(String(v)) : ""); }
+    if (f) { const v = (it.f || {})[f.id]; return isVarField(f) ? el("td", { className: "txt full", textContent: v ? String(v) : "" }) : el("td", { className: "txt" }, v ? clip(String(v)) : ""); }
     switch (c.key) {
       case "img": { const pr = it.main ? productOf(o) : productByCode(it.sku); return el("td", { className: "img-c" }, pr && pr.img ? thumb(pr.img) : ""); }
       case "sku": return el("td", { className: "sku-c", textContent: it.sku || "" });
