@@ -123,6 +123,11 @@ label.f.checkf input { width: 18px; height: 18px; accent-color: var(--accent); }
 .list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
 .list-head h2 { margin: 0; }
 .filters { display: flex; gap: 4px; flex-wrap: wrap; }
+.pager { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; margin: 12px 0 4px; font-size: 0.85rem; }
+.pager button { min-width: 34px; padding: 4px 8px; }
+.pager button:disabled { opacity: 0.35; cursor: default; }
+.pager #pgInfo, .pager #sPgInfo { min-width: 9em; text-align: center; color: var(--muted, inherit); }
+.pager .pg-size { margin-left: 8px; display: inline-flex; align-items: center; gap: 6px; }
 .filters button { font-size: 0.82rem; padding: 4px 10px; border-radius: 999px; }
 .filters button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .table-wrap { overflow-x: auto; margin-top: 12px; }
@@ -518,6 +523,14 @@ td.n .stack { justify-items: end; }
       </table>
     </div>
     <p class="empty" id="empty"></p>
+    <nav class="pager" id="pager" aria-label="Phân trang">
+      <button type="button" id="pgFirst" aria-label="Trang đầu">«</button>
+      <button type="button" id="pgPrev" aria-label="Trang trước">‹</button>
+      <span id="pgInfo"></span>
+      <button type="button" id="pgNext" aria-label="Trang sau">›</button>
+      <button type="button" id="pgLast" aria-label="Trang cuối">»</button>
+      <label class="pg-size"><select id="pgSize"><option>20</option><option>50</option><option>100</option><option>200</option><option>1000</option></select> dòng/trang</label>
+    </nav>
     <p class="legend" id="legend"></p>
   </section>
 
@@ -532,6 +545,10 @@ td.n .stack { justify-items: end; }
         <option value="tot">Tổng SL (mọi trạng thái)</option>
       </select></label>
     </div>
+    <div class="search-row">
+      <input type="search" id="sq" placeholder="🔍 Tìm theo tên hàng, mã SP, phân loại, người mua…" autocomplete="off" aria-label="Tìm trong tổng theo sản phẩm">
+      <span class="sum-note" id="sqCount"></span>
+    </div>
     <p class="sum-note" id="sumNote"></p>
     <div class="bars" id="sumChart" role="img"></div>
     <div class="sum-wrap">
@@ -541,6 +558,14 @@ td.n .stack { justify-items: end; }
       </table>
     </div>
     <p class="empty" id="sumEmpty" hidden>Chưa có sản phẩm nào trong khoảng này.</p>
+    <nav class="pager" id="sPager" aria-label="Phân trang tổng theo sản phẩm">
+      <button type="button" id="sPgFirst" aria-label="Trang đầu">«</button>
+      <button type="button" id="sPgPrev" aria-label="Trang trước">‹</button>
+      <span id="sPgInfo"></span>
+      <button type="button" id="sPgNext" aria-label="Trang sau">›</button>
+      <button type="button" id="sPgLast" aria-label="Trang cuối">»</button>
+      <label class="pg-size"><select id="sPgSize"><option>20</option><option>50</option><option>100</option><option>200</option><option>1000</option></select> mã/trang</label>
+    </nav>
   </section>
 
 
@@ -1593,10 +1618,33 @@ function readFields_(cfg) {
   // Bảng tổng: gom theo mã SP (không mã thì theo tên), tách theo phân loại, đếm SL theo trạng thái.
   // Lãi chỉ tính đơn hoàn thành; đơn nhiều SP chia (thực nhận + khoản cộng − ship − khoản trừ) theo tỷ lệ tiền nhập (không có tiền nhập thì theo SL).
   let sumSort = "sold";
+  const KEY_PG = "so-lai-ban-hang:pageSize";
+  let page = 1, pgSig = "", pgSize = 20;
+  try { pgSize = [20, 50, 100, 200, 1000].includes(Number(localStorage.getItem(KEY_PG))) ? Number(localStorage.getItem(KEY_PG)) : 20; } catch (e) {}
+  const goPage = (p) => { page = p; render(); $("rows").closest("table").scrollIntoView({ block: "start", behavior: "smooth" }); };
+  $("pgFirst").addEventListener("click", () => goPage(1));
+  $("pgPrev").addEventListener("click", () => goPage(page - 1));
+  $("pgNext").addEventListener("click", () => goPage(page + 1));
+  $("pgLast").addEventListener("click", () => goPage(1e9));
+  const KEY_SPG = "so-lai-ban-hang:sumPageSize";
+  let sPage = 1, sPgSig = "", sPgSize = 20;
+  try { sPgSize = [20, 50, 100, 200, 1000].includes(Number(localStorage.getItem(KEY_SPG))) ? Number(localStorage.getItem(KEY_SPG)) : 20; } catch (e) {}
+  const goSPage = (p) => { sPage = p; render(); $("sumRows").closest("table").scrollIntoView({ block: "start", behavior: "smooth" }); };
+  $("sPgFirst").addEventListener("click", () => goSPage(1));
+  $("sPgPrev").addEventListener("click", () => goSPage(sPage - 1));
+  $("sPgNext").addEventListener("click", () => goSPage(sPage + 1));
+  $("sPgLast").addEventListener("click", () => goSPage(1e9));
+  $("sPgSize").addEventListener("change", () => { sPgSize = Number($("sPgSize").value) || 20; try { localStorage.setItem(KEY_SPG, String(sPgSize)); } catch (e) {} render(); });
+  let sqTimer = null;
+  $("sq").addEventListener("input", () => { clearTimeout(sqTimer); sqTimer = setTimeout(render, 150); });
+  $("pgSize").addEventListener("change", () => { pgSize = Number($("pgSize").value) || 20; try { localStorage.setItem(KEY_PG, String(pgSize)); } catch (e) {} render(); });
   $("sumSort").addEventListener("change", () => { sumSort = $("sumSort").value; render(); });
   function renderSummary(scope) {
     const varFields = fields.filter(isVarField);
     const groups = new Map();
+    // tìm: tên hàng, mã SP, phân loại, người mua (mọi ô chữ của đơn: khách, mã đơn…)
+    const sWords = norm($("sq").value).split(" ").filter(Boolean);
+    const buyerOf = (o) => fields.filter((f) => f.type === "text" && !isVarField(f)).map((f) => (o.extra || {})[f.id]);
     const blank = () => ({ new: 0, ord: 0, done: 0, stock: 0, tot: 0, profit: 0, rev: 0 });
     scope.forEach((o) => {
       const st = stOf(o), its = orderItems(o);
@@ -1610,6 +1658,7 @@ function readFields_(cfg) {
       its.forEach((it) => {
         const name = String(it.name || "").trim(), sku = String(it.sku || "").trim();
         if (!sku && !name) return;
+        if (sWords.length) { const h = norm([sku, name, (productByCode(sku) || {}).name, ...Object.values(it.f || {}), ...buyerOf(o)].filter(Boolean).join(" ")); if (!sWords.every((w) => h.includes(w))) return; }
         const gk = sku ? "s:" + sku.toLowerCase() : "n:" + name.toLowerCase();
         let g = groups.get(gk);
         if (!g) { g = { sku, name: (sku && (productByCode(sku) || {}).name) || name, vars: new Map(), ...blank() }; groups.set(gk, g); }
@@ -1633,6 +1682,17 @@ function readFields_(cfg) {
       : list.map((g) => [...g.vars.values()].sort((a, b) => cmp(a, b) || a.label.localeCompare(b.label, "vi", { numeric: true })));
     const tb = $("sumRows"); tb.textContent = "";
     const grand = blank();
+    blocks.forEach((vs) => vs.forEach((v) => { for (const x of Object.keys(grand)) grand[x] += v[x]; }));
+    $("sqCount").textContent = sWords.length ? "tìm thấy " + list.length + " mã" : "";
+    const sig = [$("sq").value, sumSort, range.from, range.to, sPgSize].join("|");
+    if (sig !== sPgSig) { sPgSig = sig; sPage = 1; }
+    const sPages = Math.max(1, Math.ceil(blocks.length / sPgSize));
+    sPage = Math.min(Math.max(1, sPage), sPages);
+    $("sPager").hidden = blocks.length <= 20;
+    $("sPgInfo").textContent = "Trang " + sPage + "/" + sPages + " · " + ((sPage - 1) * sPgSize + 1) + "–" + Math.min(sPage * sPgSize, blocks.length) + " / " + blocks.length + (flat ? " phân loại" : " mã");
+    $("sPgFirst").disabled = $("sPgPrev").disabled = sPage <= 1;
+    $("sPgNext").disabled = $("sPgLast").disabled = sPage >= sPages;
+    $("sPgSize").value = String(sPgSize);
     const numTd = (n, cls) => el("td", { className: "n " + (n ? cls || "" : "z"), textContent: n ? fmt(n) : "–" });
     const moneyTds = (t) => [
       el("td", { className: "n " + (t.done ? "" : "z"), textContent: t.done ? fmt(Math.round(t.rev)) : "–" }),
@@ -1640,7 +1700,7 @@ function readFields_(cfg) {
       el("td", { className: "n " + (t.done ? (t.profit < 0 ? "neg" : "pos") : "z"), textContent: t.done ? fmt(Math.round(t.profit / t.done)) : "–" }),
     ];
     const cntTds = (t, cls) => [numTd(t.new), numTd(t.ord, "c-ord"), numTd(t.done, "c-done"), numTd(t.stock, "c-stk"), numTd(t.tot, "tot"), ...moneyTds(t)].map((c) => (cls && c.classList.add(cls), c));
-    blocks.forEach((vs) => {
+    blocks.slice((sPage - 1) * sPgSize, sPage * sPgSize).forEach((vs) => {
       const g = vs[0].g, n = vs.length;
       vs.forEach((v, k) => {
         const tr = el("tr", { className: n === 1 ? "sub-end" : "" });
@@ -1651,7 +1711,6 @@ function readFields_(cfg) {
         }
         tr.append(el("td", { className: "var" + (n > 1 ? " isep" : ""), textContent: v.label || "—" }), ...cntTds(v, n > 1 ? "isep" : ""));
         tb.append(tr);
-        for (const x of Object.keys(grand)) grand[x] += v[x];
       });
       if (n > 1) {
         const tr = el("tr", { className: "sub-end" });
@@ -1665,6 +1724,7 @@ function readFields_(cfg) {
       tb.append(tr);
     }
     $("sumEmpty").hidden = !!blocks.length;
+    $("sumEmpty").textContent = sWords.length ? "Không có sản phẩm nào khớp “" + $("sq").value.trim() + "”." : "Chưa có sản phẩm nào trong khoảng này.";
     const what = { sold: "SL đã bán (đơn hoàn thành)", var: "SL bán theo phân loại", ppu: "lãi trung bình mỗi sản phẩm đã bán", rev: "doanh thu (thực nhận đơn hoàn thành)", tot: "tổng SL mọi trạng thái" }[sumSort];
     $("sumNote").textContent = "Khoảng " + rangeText() + " · biểu đồ: top 10 theo " + what + ". Doanh thu = thực nhận (giá bán sau mã giảm của shop), lãi = doanh thu − phí sàn − tiền nhập − ship; chỉ tính đơn hoàn thành.";
     // biểu đồ top 10
@@ -1731,9 +1791,21 @@ function readFields_(cfg) {
       .filter((o) => (filter === "all" || stOf(o) === filter) && foundSet.has(o))
       .sort((a, b) => dKey(b).localeCompare(dKey(a)) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 
+    // phân trang: về trang 1 khi đổi bộ lọc / tìm kiếm / khoảng ngày
+    const sig = [filter, $("q").value, range.from, range.to, pgSize].join("|");
+    if (sig !== pgSig) { pgSig = sig; page = 1; }
+    const pages = Math.max(1, Math.ceil(list.length / pgSize));
+    page = Math.min(Math.max(1, page), pages);
+    const view = list.slice((page - 1) * pgSize, page * pgSize);
+    $("pager").hidden = list.length <= 20;
+    $("pgInfo").textContent = "Trang " + page + "/" + pages + " · đơn " + ((page - 1) * pgSize + 1) + "–" + Math.min(page * pgSize, list.length) + " / " + list.length;
+    $("pgFirst").disabled = $("pgPrev").disabled = page <= 1;
+    $("pgNext").disabled = $("pgLast").disabled = page >= pages;
+    $("pgSize").value = String(pgSize);
+
     const tb = $("rows");
     tb.textContent = "";
-    list.forEach((o) => {
+    view.forEach((o) => {
       const p = profitOf(o);
       const its = orderItems(o);
       const n = its.length;
