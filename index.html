@@ -22,7 +22,7 @@
   --loss-soft: #fbe9e7;
   --stock: #9a6412;
   --stock-soft: #f8eedb;
-  --row-done: #e3f4ea; --row-ord: #fdf6cf; --row-stk: #fde2df;
+  --row-done: #e3f4ea; --row-ord: #fdf6cf; --row-stk: #fde2df; --row-huy: #eceeed;
   --ord: #8a6d00; --stk: #b42318;
   --font-display: "Lexend", "Be Vietnam Pro", system-ui, sans-serif;
   --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -33,14 +33,14 @@
     --bg: #121715; --surface: #1a211e; --fg: #e8eeeb; --muted: #9aa8a2; --line: #2c3632;
     --accent: #4cc4a4; --accent-soft: #1d3a32; --gain: #5fd3a8; --loss: #ff8a7a; --loss-soft: #3a201d;
     --stock: #e8b45c; --stock-soft: #3a2f1c; color-scheme: dark;
-    --row-done: #193a2c; --row-ord: #3a3418; --row-stk: #45201d; --ord: #e9cf5a; --stk: #ff8a7a;
+    --row-done: #193a2c; --row-ord: #3a3418; --row-stk: #45201d; --row-huy: #262b29; --ord: #e9cf5a; --stk: #ff8a7a;
   }
 }
 :root[data-theme="dark"] {
   --bg: #121715; --surface: #1a211e; --fg: #e8eeeb; --muted: #9aa8a2; --line: #2c3632;
   --accent: #4cc4a4; --accent-soft: #1d3a32; --gain: #5fd3a8; --loss: #ff8a7a; --loss-soft: #3a201d;
   --stock: #e8b45c; --stock-soft: #3a2f1c; color-scheme: dark;
-    --row-done: #193a2c; --row-ord: #3a3418; --row-stk: #45201d; --ord: #e9cf5a; --stk: #ff8a7a;
+    --row-done: #193a2c; --row-ord: #3a3418; --row-stk: #45201d; --row-huy: #262b29; --ord: #e9cf5a; --stk: #ff8a7a;
 }
 * { box-sizing: border-box; }
 html { font-size: 14px; }
@@ -148,6 +148,8 @@ tr.pending td.dim { color: var(--muted); text-decoration: line-through; }
 #rows tr.st-done > td { background: var(--row-done); }
 #rows tr.st-ord > td { background: var(--row-ord); }
 #rows tr.st-stk > td { background: var(--row-stk); }
+#rows tr.st-huy > td { background: var(--row-huy); color: var(--muted); }
+.pill.huy { background-color: var(--row-huy); color: var(--muted); border-color: var(--line); }
 .pill.ord { background: var(--row-ord); color: var(--ord); border-color: color-mix(in srgb, var(--ord) 35%, transparent); }
 .pill.stk { background: var(--row-stk); color: var(--stk); border-color: color-mix(in srgb, var(--stk) 35%, transparent); }
 .pill.done { border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
@@ -235,6 +237,7 @@ td.sku-c { white-space: nowrap; font-weight: 600; }
 /* Nhập file & lịch sử */
 .imp-preview { margin-top: 12px; padding: 12px; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 8px; display: grid; gap: 10px; }
 .imp-msg { margin: 0; font-size: 0.9rem; }
+.imp-list { margin: 0; padding-left: 18px; font-size: 0.82rem; display: grid; gap: 2px; }
 .imp-err { margin: 0; padding-left: 18px; font-size: 0.82rem; color: var(--loss); display: grid; gap: 2px; }
 .uplist { display: grid; gap: 6px; margin-top: 12px; }
 .uprow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 0.86rem; }
@@ -269,6 +272,19 @@ td.n .stack { justify-items: end; }
 .items-foot .sum { font-size: 0.88rem; color: var(--muted); }
 .items-foot .sum b { color: var(--fg); }
 .irow .wide2 { grid-column: span 2; }
+/* Hộp thoại ghi/sửa đơn */
+.dlg { border: 0; padding: 0; background: transparent; width: min(1200px, calc(100% - 24px)); max-height: calc(100% - 24px); }
+.dlg::backdrop { background: rgba(0, 0, 0, 0.45); }
+.dlg > .card { margin: 0; }
+.dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.dlg-x { border: 0; background: transparent; font-size: 1.1rem; padding: 4px 8px; }
+.list-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+/* Sửa nhanh trong bảng */
+#rows td.ed { cursor: text; }
+#rows td.ed:hover { box-shadow: inset 0 -2px 0 var(--accent); }
+#rows td.ed.blank::after { content: "+"; color: var(--muted); opacity: 0.5; }
+#rows td input.qe.qt { width: 11em; text-align: left; }
+#rows td input.qe { width: 7em; max-width: 100%; text-align: right; font: inherit; padding: 3px 5px; border: 1px solid var(--accent); border-radius: 6px; background: var(--surface); color: var(--fg); }
 /* Bảng tổng theo sản phẩm */
 .sum-wrap { overflow-x: auto; margin-top: 12px; }
 .sumt td { padding: 7px 8px; vertical-align: top; }
@@ -337,6 +353,7 @@ td.n .stack { justify-items: end; }
   #rows tr.st-done { background: var(--row-done); border-color: transparent; }
   #rows tr.st-ord { background: var(--row-ord); border-color: transparent; }
   #rows tr.st-stk { background: var(--row-stk); border-color: transparent; }
+  #rows tr.st-huy { background: var(--row-huy); border-color: transparent; color: var(--muted); }
   #rows tr > td { background: transparent !important; }
   #rows td { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 2px 0; border: 0; min-width: 0; max-width: none; font-size: 0.92rem; text-align: right; }
   #rows td::before { content: attr(data-label); display: inline-block; color: var(--muted); font-size: 0.8rem; font-weight: 400; text-align: left; white-space: nowrap; }
@@ -345,6 +362,9 @@ td.n .stack { justify-items: end; }
   .bars .row { grid-template-columns: 110px minmax(0, 1fr) 70px; gap: 8px; }
   .rng input { font-size: 16px; padding: 5px 6px; }
   .month { justify-content: flex-start; }
+  .dlg { width: 100%; max-width: 100%; max-height: 100%; height: 100%; margin: 0; }
+  .dlg > .card { min-height: 100%; border-radius: 0; }
+  #rows td input.qe { font-size: 16px; width: 6.5em; }
   #rows td.st-c { grid-column: 1 / -1; justify-content: start; gap: 12px; }
   .sumt { font-size: 0.85rem; }
   .sumt th, .sumt td { padding: 6px 4px; }
@@ -411,8 +431,9 @@ td.n .stack { justify-items: end; }
     <div class="stat stock"><span class="k">Tồn kho</span><span class="v num" id="sStock">0 đơn</span><span class="d" id="sStockD">tiền hàng tồn 0</span></div>
   </section>
 
+  <dialog id="formDlg" class="dlg" aria-labelledby="formTitle">
   <section class="card">
-    <h2 id="formTitle">Ghi đơn mới</h2>
+    <div class="dlg-head"><h2 id="formTitle">Ghi đơn mới</h2><button type="button" class="dlg-x" id="dlgX" aria-label="Đóng">✕</button></div>
     <form id="form" autocomplete="off">
       <div class="grid" id="fGrid">
         <label class="f" data-col="date"><span class="lbl">Ngày</span><input type="date" id="fDate" required></label>
@@ -436,25 +457,46 @@ td.n .stack { justify-items: end; }
       <datalist id="skuList"></datalist>
       <div class="sku-hint" id="skuHint" hidden><span id="skuHintMsg"></span><button type="button" id="skuAdd">Thêm sản phẩm này</button></div>
       <div class="form-foot">
-        <label class="check">Trạng thái <select id="fSt"><option value="new">Chưa order</option><option value="ord">Đã order</option><option value="done">Hoàn thành</option><option value="stock">Tồn kho</option></select></label>
+        <label class="check">Trạng thái <select id="fSt"><option value="new">Chưa order</option><option value="ord">Đã order</option><option value="done">Hoàn thành</option><option value="stock">Tồn kho</option><option value="huy">Đã hủy</option></select></label>
         <span class="preview" id="preview"></span>
         <div class="right">
-          <button type="button" id="cancelEdit" hidden>Huỷ sửa</button>
+          <button type="button" id="cancelEdit">Đóng</button>
           <button type="submit" class="btn-primary" id="saveBtn">Lưu đơn</button>
         </div>
       </div>
     </form>
   </section>
+  </dialog>
 
   <section class="card">
     <div class="list-head">
       <h2>Danh sách đơn</h2>
+      <div class="list-acts">
+        <button type="button" class="btn-primary" id="impOPick" title="File tải từ Shopee: Kênh Người Bán → Đơn hàng → Xuất">⬆ Tải file Shopee</button>
+        <button type="button" id="newOrder">+ Thêm đơn</button>
+        <button type="button" id="impOTpl" hidden>Tải file mẫu</button>
+        <input type="file" id="impOFile" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>
+      </div>
+    </div>
+    <div class="imp-preview" id="impOBox" hidden>
+      <p class="imp-msg" id="impOMsg"></p>
+      <ul class="imp-err" id="impOErr" hidden></ul>
+      <ul class="imp-list" id="impOList" hidden></ul>
+      <label class="check" id="impODupWrap" hidden><input type="checkbox" id="impODup"> Vẫn nhập cả dòng trùng</label>
+      <div class="right">
+        <button type="button" class="btn-primary" id="impOYes">Nhập</button>
+        <button type="button" id="impONo">Huỷ</button>
+      </div>
+    </div>
+    <div class="list-head" style="margin-top:10px">
+      <p class="hint" style="margin:0">Bấm vào ô <b>Tệ, Tỷ giá, SL, Tiền nhập, Tiền ship, Thực nhận</b> để sửa ngay. Sửa thông tin khác: nút “Sửa”.</p>
       <div class="filters" role="group" aria-label="Lọc đơn">
         <button type="button" data-f="all" aria-pressed="true">Tất cả</button>
         <button type="button" data-f="new" aria-pressed="false">Chưa order</button>
         <button type="button" data-f="ord" aria-pressed="false">Đã order</button>
         <button type="button" data-f="done" aria-pressed="false">Hoàn thành</button>
         <button type="button" data-f="stock" aria-pressed="false">Tồn kho</button>
+        <button type="button" data-f="huy" aria-pressed="false">Đã hủy</button>
       </div>
     </div>
     <div class="table-wrap">
@@ -488,24 +530,6 @@ td.n .stack { justify-items: end; }
     <p class="empty" id="sumEmpty" hidden>Chưa có sản phẩm nào trong khoảng này.</p>
   </section>
 
-  <section class="card imp">
-    <h2>Nhập đơn từ file</h2>
-    <p class="hint" style="margin-top:0">Tải file mẫu, điền đơn vào (mỗi dòng một đơn) rồi chọn file để nhập. Cột trong file mẫu theo đúng các cột đang hiện ở “Cấu hình cột”. Dòng trùng hệt đơn đã có sẽ được bỏ qua để tránh nhập 2 lần.</p>
-    <div class="right" style="margin-top:12px">
-      <button type="button" id="impOTpl">Tải file mẫu</button>
-      <button type="button" class="btn-primary" id="impOPick">Chọn file Excel / CSV</button>
-      <input type="file" id="impOFile" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>
-    </div>
-    <div class="imp-preview" id="impOBox" hidden>
-      <p class="imp-msg" id="impOMsg"></p>
-      <ul class="imp-err" id="impOErr" hidden></ul>
-      <label class="check" id="impODupWrap" hidden><input type="checkbox" id="impODup"> Vẫn nhập cả dòng trùng</label>
-      <div class="right">
-        <button type="button" class="btn-primary" id="impOYes">Nhập</button>
-        <button type="button" id="impONo">Huỷ</button>
-      </div>
-    </div>
-  </section>
 
   </div>
   <div class="pane" data-pane="san-pham" role="tabpanel" aria-labelledby="tab-san-pham">
@@ -929,11 +953,11 @@ function readFields_(cfg) {
   let range = { from: ymd(new Date(now.getFullYear(), now.getMonth(), 1)), to: ymd(now) };
 
   // ----- tính tiền -----
-  const ST_CLS = { new: "new", ord: "ord", done: "done", stock: "stk" };
-  const ST_LABEL = { new: "Chưa order", ord: "Đã order", done: "Hoàn thành", stock: "Tồn kho" };
+  const ST_CLS = { new: "new", ord: "ord", done: "done", stock: "stk", huy: "huy" };
+  const ST_LABEL = { new: "Chưa order", ord: "Đã order", done: "Hoàn thành", stock: "Tồn kho", huy: "Đã hủy" };
   // 4 trạng thái: chưa order (trắng) · đã order (vàng) · hoàn thành (xanh) · tồn kho (đỏ)
   // Đơn cũ chưa có _st: tích "Đã order" → đã order, không thì tồn kho như trước
-  const stOf = (o) => { const x = o.extra || {}; if (o.done) return "done"; if (x._st === "stock") return "stock"; if (x._st === "new" || x._st === "ord") return x._ord ? "ord" : "new"; return x._ord ? "ord" : "stock"; };
+  const stOf = (o) => { const x = o.extra || {}; if (o.done) return "done"; if (x._st === "huy") return "huy"; if (x._st === "stock") return "stock"; if (x._st === "new" || x._st === "ord") return x._ord ? "ord" : "new"; return x._ord ? "ord" : "stock"; };
   // Hoàn thành: thực nhận + khoản cộng − nhập − ship − khoản trừ
   // Tồn kho:    −(nhập + ship + khoản trừ)
   function extraSum(o, effect) {
@@ -942,6 +966,7 @@ function readFields_(cfg) {
     return s;
   }
   function profitOf(o) {
+    if (stOf(o) === "huy") return 0; // đơn huỷ khi chưa order: không tính tiền
     const base = (o.cost || 0) + (o.ship || 0) + extraSum(o, "minus");
     return o.done ? (o.revenue || 0) + extraSum(o, "plus") - base : -base;
   }
@@ -1457,7 +1482,6 @@ function readFields_(cfg) {
     onCny();
     $("formTitle").textContent = "Ghi đơn mới";
     $("saveBtn").textContent = "Lưu đơn";
-    $("cancelEdit").hidden = true;
     updatePreview();
   }
 
@@ -1481,16 +1505,19 @@ function readFields_(cfg) {
         enqueue({ op: "upsert", order: rec });
         toast("Đã lưu đơn");
       }
-      const keepDate = $("fDate").value;
-      resetForm();
-      $("fDate").value = keepDate;
+      closeForm();
       render();
-      (shown("sku") ? $("fSku") : $("fName")).focus();
     } catch (err) {
       toast("Không lưu được: " + (err && err.message ? err.message : "lỗi") + ".");
     }
   });
-  $("cancelEdit").addEventListener("click", resetForm);
+  const dlg = $("formDlg");
+  const openForm = () => { if (!dlg.open) dlg.showModal(); };
+  const closeForm = () => { if (dlg.open) dlg.close(); };
+  dlg.addEventListener("close", resetForm);
+  $("cancelEdit").addEventListener("click", closeForm);
+  $("dlgX").addEventListener("click", closeForm);
+  $("newOrder").addEventListener("click", () => { resetForm(); openForm(); setTimeout(() => (shown("sku") ? $("fSku") : $("fName")).focus(), 50); });
 
   function startEdit(o) {
     editingId = o.id;
@@ -1513,9 +1540,8 @@ function readFields_(cfg) {
     fillExtra(o.extra);
     $("formTitle").textContent = "Sửa đơn";
     $("saveBtn").textContent = "Lưu thay đổi";
-    $("cancelEdit").hidden = false;
     updatePreview();
-    $("form").scrollIntoView({ behavior: "smooth", block: "center" });
+    openForm();
   }
 
   // ----- tháng & lọc -----
@@ -1556,6 +1582,7 @@ function readFields_(cfg) {
     const blank = () => ({ new: 0, ord: 0, done: 0, stock: 0, tot: 0, profit: 0 });
     scope.forEach((o) => {
       const st = stOf(o), its = orderItems(o);
+      if (st === "huy") return;
       const totCost = its.reduce((a, it) => a + (Number(it.cost) || 0), 0), totQty = its.reduce((a, it) => a + (Number(it.qty) || 1), 0);
       const pool = (o.revenue || 0) + extraSum(o, "plus") - (o.ship || 0) - extraSum(o, "minus");
       its.forEach((it) => {
@@ -1642,7 +1669,9 @@ function readFields_(cfg) {
     $("thisM").setAttribute("aria-pressed", String(range.from === ymd(new Date(now.getFullYear(), now.getMonth(), 1)) && range.to === today()));
     const scope = orders.filter(inMonth);
     let rev = 0, plus = 0, cost = 0, ship = 0, other = 0, profit = 0, stock = 0, nDone = 0, nStock = 0, nOrd = 0, nNew = 0;
+    let nHuy = 0;
     scope.forEach((o) => {
+      if (stOf(o) === "huy") { nHuy++; return; }
       cost += o.cost || 0; ship += o.ship || 0; other += extraSum(o, "minus"); profit += profitOf(o);
       if (o.done) { rev += o.revenue || 0; plus += extraSum(o, "plus"); nDone++; } else if (stOf(o) === "stock") { stock += (o.cost || 0) + (o.ship || 0) + extraSum(o, "minus"); nStock++; } else if (stOf(o) === "ord") nOrd++; else nNew++;
     });
@@ -1677,7 +1706,7 @@ function readFields_(cfg) {
       const tr = trs[0];
       cols.forEach((c) => {
         if (isPerItem(c)) {
-          its.forEach((it, k) => { const td = itemCell(c, o, it); td.dataset.label = colLabel(c); if (k < n - 1) td.classList.add("isep"); trs[k].append(td); });
+          its.forEach((it, k) => { const td = itemCell(c, o, it, k); td.dataset.label = colLabel(c); if (k < n - 1) td.classList.add("isep"); trs[k].append(td); });
         } else {
           const td = cellFor(c, o, p); td.dataset.label = colLabel(c); if (n > 1) td.rowSpan = n; tr.append(td);
         }
@@ -1701,13 +1730,13 @@ function readFields_(cfg) {
     } else empty.hidden = true;
     const hasMinus = fields.some((f) => f.type === "money" && f.effect === "minus");
     renderSummary(scope);
-    const cnt = { all: scope.length, new: 0, ord: 0, done: 0, stock: 0 };
+    const cnt = { all: scope.length, new: 0, ord: 0, done: 0, stock: 0, huy: 0 };
     scope.forEach((o) => cnt[stOf(o)]++);
     document.querySelectorAll(".filters button").forEach((b) => {
       let c = b.querySelector(".cnt"); if (!c) { c = el("span", { className: "cnt" }); b.append(c); }
       c.textContent = cnt[b.dataset.f];
     });
-    $("legend").textContent = "Nền trắng: chưa order · vàng: đã order · xanh: hoàn thành · đỏ: tồn kho. Bấm ô trạng thái để đổi. Đơn chưa xong có lãi âm bằng tiền nhập + ship" + (hasMinus ? " + các khoản trừ." : ".");
+    $("legend").textContent = "Nền trắng: chưa order · vàng: đã order · xanh: hoàn thành · đỏ: tồn kho · xám: đã hủy (không tính tiền). Bấm ô trạng thái để đổi. Đơn chưa xong có lãi âm bằng tiền nhập + ship" + (hasMinus ? " + các khoản trừ." : ".");
   }
   function colClass(c) {
     const f = fieldOf(c.key);
@@ -1720,6 +1749,7 @@ function readFields_(cfg) {
       const v = (o.extra || {})[f.id];
       if (f.type === "money") return el("td", { className: "n" + (f.effect === "plus" && !o.done ? " dim" : ""), textContent: v ? fmt(Number(v)) : "" });
       if (f.type === "check") return el("td", { className: "c", textContent: v ? "✓" : "" });
+      if (/^ma don( hang| shopee)?$/.test(norm(f.name))) return quick(el("td", { className: "txt", textContent: v ? String(v) : "" }), v ? String(v) : "", (t) => t.trim().toUpperCase(), (val) => { quickOrder = o; o.extra = { ...(o.extra || {}), [f.id]: val || "" }; }, true);
       return isVarField(f) ? el("td", { className: "txt full", textContent: v ? String(v) : "" }) : el("td", { className: "txt" }, v ? clip(String(v)) : "");
     }
     switch (c.key) {
@@ -1737,13 +1767,13 @@ function readFields_(cfg) {
       case "cny": return el("td", { className: "n", textContent: fmtCny((o.extra || {})._cny) });
       case "rate": return el("td", { className: "n", textContent: (o.extra || {})._cny ? money(Number((o.extra || {})._rate) || 0) : "" });
       case "cost": return el("td", { className: "n", textContent: fmt(o.cost || 0) });
-      case "ship": return el("td", { className: "n", textContent: fmt(o.ship || 0) });
-      case "revenue": return el("td", { className: "n dim", textContent: fmt(o.revenue || 0) });
+      case "ship": return quick(el("td", { className: "n", textContent: fmt(o.ship || 0) }), money(o.ship || 0), parseMoney, (v) => setOrderVal(o, "ship", v));
+      case "revenue": return quick(el("td", { className: "n dim", textContent: fmt(o.revenue || 0) }), money(o.revenue || 0), parseMoney, (v) => setOrderVal(o, "revenue", v));
       case "profit": return el("td", { className: "n " + (p < 0 ? "neg" : "pos"), textContent: fmt(p) });
       case "status": {
         const st = stOf(o);
         const pill = el("select", { className: "pill " + ST_CLS[st], title: "Đổi trạng thái" });
-        ["new", "ord", "done", "stock"].forEach((v) => pill.append(el("option", { value: v, textContent: (v === "done" ? "✓ " : "") + ST_LABEL[v] })));
+        ["new", "ord", "done", "stock", "huy"].forEach((v) => pill.append(el("option", { value: v, textContent: (v === "done" ? "✓ " : "") + ST_LABEL[v] })));
         pill.value = st;
         pill.addEventListener("change", () => setStatus(o, pill.value));
         return el("td", { className: "st-c" }, pill);
@@ -1757,17 +1787,83 @@ function readFields_(cfg) {
     sp.addEventListener("click", () => sp.classList.toggle("open"));
     return sp;
   }
-  function itemCell(c, o, it) {
+  // ----- sửa nhanh trong bảng: bấm ô → ô nhập, Enter/bấm ra ngoài để lưu, Esc để thôi -----
+  function quick(td, cur, parse, apply, isText) {
+    td.classList.add("ed");
+    if (td.textContent === "") td.classList.add("blank");
+    td.title = "Bấm để sửa";
+    td.addEventListener("click", (e) => {
+      if (td.querySelector("input")) return;
+      e.stopPropagation();
+      const inp = el("input", { className: "qe" + (isText ? " qt" : ""), value: cur, inputMode: isText ? "text" : "decimal" });
+      td.classList.remove("blank");
+      td.textContent = ""; td.append(inp); inp.focus(); inp.select();
+      let done = false;
+      const finish = (ok) => {
+        if (done) return; done = true;
+        if (ok && inp.value.trim() !== String(cur)) { apply(inp.value.trim() === "" ? (isText ? "" : 0) : parse(inp.value)); commitQuick(); }
+        else render();
+      };
+      inp.addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); finish(true); } if (ev.key === "Escape") finish(false); });
+      inp.addEventListener("blur", () => finish(true));
+    });
+    return td;
+  }
+  let quickOrder = null;
+  function commitQuick() {
+    const o = quickOrder; if (!o) return;
+    o.updatedAt = new Date().toISOString();
+    try { save(); enqueue({ op: "upsert", order: o }); } catch (e) { toast("Không lưu được."); }
+    render();
+  }
+  // Ghi 1 giá trị cho SP thứ k của đơn (0 = SP chính) rồi tính lại tiền nhập của đơn
+  function setItemVal(o, k, key, val) {
+    quickOrder = o;
+    const x = { ...(o.extra || {}) };
+    const its = itemsOf(o).map((it) => ({ ...it }));
+    const mainOld = (o.cost || 0) - itemsCost(its);
+    const r0 = (v) => Number(v) || 0;
+    if (key === "rate" && val) try { localStorage.setItem(KEY_RATE, String(val)); } catch (e) {}
+    let main = mainOld;
+    if (k === 0) {
+      const q0 = qtyOf(o);
+      if (key === "qty") x._qty = parseQty(val);
+      if (key === "cny") { x._cny = val || ""; if (val && !r0(x._rate)) x._rate = lastRate(); }
+      if (key === "rate") x._rate = val || "";
+      const q = Number(x._qty) || 1;
+      if (r0(x._cny)) main = costFromCny(r0(x._cny), r0(x._rate)) * q;
+      else if (key === "cost") main = val;
+      else if (key === "qty") main = Math.round(mainOld / q0 * q);
+    } else {
+      const it = its[k - 1];
+      if (key === "qty") { const q0 = r0(it.qty) || 1; it.qty = parseQty(val); if (!it.cny && !it.unit) it.unit = r0(it.cost) / q0; }
+      if (key === "cny") { it.cny = val || 0; if (val && !r0(it.rate)) it.rate = r0(x._rate) || lastRate(); }
+      if (key === "rate") it.rate = val || 0;
+      if (key === "cost") { it.unit = val / (r0(it.qty) || 1); }
+      const q = r0(it.qty) || 1;
+      it.cost = it.cny ? costFromCny(r0(it.cny), r0(it.rate) || r0(x._rate)) * q : Math.round((r0(it.unit) || 0) * q);
+      x._items = its;
+    }
+    o.extra = x;
+    o.cost = Math.round(main) + itemsCost(its);
+  }
+  function setOrderVal(o, key, val) { quickOrder = o; o[key] = val; }
+
+  function itemCell(c, o, it, k) {
     const f = fieldOf(c.key);
     if (f) { const v = (it.f || {})[f.id]; return isVarField(f) ? el("td", { className: "txt full", textContent: v ? String(v) : "" }) : el("td", { className: "txt" }, v ? clip(String(v)) : ""); }
     switch (c.key) {
       case "img": { const pr = it.main ? productOf(o) : productByCode(it.sku); return el("td", { className: "img-c" }, pr && pr.img ? thumb(pr.img) : ""); }
       case "sku": return el("td", { className: "sku-c", textContent: it.sku || "" });
       case "name": return el("td", { className: "name" }, clip(it.name || "(không tên)"));
-      case "qty": return el("td", { className: "n", textContent: String(Number(it.qty) || 1) });
-      case "cny": return el("td", { className: "n", textContent: fmtCny(it.cny) });
-      case "rate": return el("td", { className: "n", textContent: it.cny && it.rate ? money(Number(it.rate)) : "" });
-      case "cost": return el("td", { className: "n", textContent: fmt(Number(it.cost) || 0) });
+      case "qty": return quick(el("td", { className: "n", textContent: String(Number(it.qty) || 1) }), String(Number(it.qty) || 1), parseQty, (v) => setItemVal(o, k, "qty", v));
+      case "cny": return quick(el("td", { className: "n", textContent: fmtCny(it.cny) }), fmtCny(it.cny), parseCny, (v) => setItemVal(o, k, "cny", v));
+      case "rate": return quick(el("td", { className: "n", textContent: it.cny && it.rate ? money(Number(it.rate)) : "" }), it.rate ? money(Number(it.rate)) : "", parseMoney, (v) => setItemVal(o, k, "rate", v));
+      case "cost": {
+        const td = el("td", { className: "n", textContent: fmt(Number(it.cost) || 0) });
+        if (it.cny) { td.title = "= Tệ × Tỷ giá × SL"; return td; }
+        return quick(td, money(Number(it.cost) || 0), parseMoney, (v) => setItemVal(o, k, "cost", v));
+      }
     }
     return el("td");
   }
@@ -1776,7 +1872,8 @@ function readFields_(cfg) {
   function toggleOrdered(o, v) {
     const st = stOf(o);
     o.extra = { ...(o.extra || {}), _ord: v };
-    if (!o.done && st !== "stock") o.extra._st = v ? "ord" : "new";
+    if (st === "huy") { /* giữ đã hủy */ }
+    else if (!o.done && st !== "stock") o.extra._st = v ? "ord" : "new";
     else if (!o.done && v) o.extra._st = "ord";
     try { o.updatedAt = new Date().toISOString(); save(); enqueue({ op: "upsert", order: o }); }
     catch (e) { toast("Không cập nhật được."); }
@@ -2275,6 +2372,139 @@ function readFields_(cfg) {
     return res;
   }
 
+  // ----- file đơn Shopee: gom dòng theo Mã đơn hàng -----
+  // Hoàn thành → hoàn thành; Đã hủy / trả hết hàng → tồn kho nếu đã tích Đã order, không thì Đã hủy; trạng thái khác → giữ nguyên
+  const isShopeeHead = (row) => { const n = (row || []).map(norm); return n.includes("ma don hang") && n.includes("trang thai don hang"); };
+  function shopeeFields() {
+    const find = (pred) => fields.find(pred);
+    const plan = [];
+    const need = (f, mk) => { if (f) return f; const nf = { id: newId(), ...mk }; plan.push(nf); return nf; };
+    const ma = need(find((f) => f.type === "text" && /^ma don( hang| shopee)?$/.test(norm(f.name))), { name: "Mã đơn", type: "text", effect: "none" });
+    const kh = need(find((f) => f.type === "text" && /^(khach|khach hang|ten khach|nguoi mua)$/.test(norm(f.name))), { name: "Khách", type: "text", effect: "none" });
+    const pl = need(find((f) => isVarField(f)), { name: "Phân loại", type: "text", effect: "none" });
+    const ps = need(find((f) => f.type === "money" && /^(phi san|phi shopee|phi san shopee)$/.test(norm(f.name))), { name: "Phí sàn", type: "money", effect: "minus" });
+    return { ma, kh, pl, ps, plan };
+  }
+  function parseShopee(rows, at, file) {
+    const head = rows[at].map(norm);
+    const ci = (name) => head.indexOf(norm(name));
+    const C = {}; ["Mã đơn hàng", "Ngày đặt hàng", "Trạng Thái Đơn Hàng", "Tên sản phẩm", "Tên phân loại hàng", "Số lượng", "Số lượng sản phẩm được hoàn trả", "SKU phân loại hàng", "SKU sản phẩm", "Giá ưu đãi", "Mã giảm giá của Shop", "Giảm giá từ Combo của Shop", "Phí cố định", "Phí Dịch Vụ", "Phí xử lý giao dịch", "Người Mua"].forEach((k) => (C[k] = ci(k)));
+    const get = (row, k) => (C[k] >= 0 ? row[C[k]] : "");
+    const num = (v) => Number(String(v == null ? "" : v).replace(/,/g, "")) || 0;
+    const day = (v) => typeof v === "number" ? new Date(Math.round((v - 25569) * 864e5)).toISOString().slice(0, 10) : String(v || "").trim().slice(0, 10);
+    const F = shopeeFields();
+    const res = { shopee: true, file, total: 0, errors: [], fieldsPlan: F.plan, F, add: [], upd: [], same: 0, lines: [], warn: [] };
+    const by = new Map();
+    for (let i = at + 1; i < rows.length; i++) {
+      const row = rows[i] || [];
+      const code = String(get(row, "Mã đơn hàng") || "").trim().toUpperCase();
+      if (!code) continue;
+      res.total++;
+      if (!by.has(code)) by.set(code, []);
+      by.get(code).push(row);
+    }
+    const byCode = new Map();
+    // Đơn ghi tay chưa có mã: chấm điểm theo khách, phân loại, ngày, mã SP; chỉ gắn khi có đúng 1 đơn điểm cao nhất
+    const nv = (v) => norm(v).replace(/ /g, "");
+    const loose = [];
+    orders.forEach((o) => {
+      const x = o.extra || {}, c = String(x[F.ma.id] || "").trim().toUpperCase();
+      if (c) byCode.set(c, o); else loose.push(o);
+    });
+    const used = new Set(), newBy = [];
+    const dayDiff = (a, b) => Math.abs((new Date(a) - new Date(b)) / 864e5);
+    function score(o, date, buyer, it) {
+      const x = o.extra || {};
+      let sc = 0;
+      const kh = norm(x[F.kh.id]);
+      if (kh && buyer) { if (kh !== norm(buyer)) return -1; sc += 4; }
+      const pv = nv(x[F.pl.id]);
+      if (pv && it.variant) { if (pv !== nv(it.variant)) return -1; sc += 3; }
+      if (o.sku && it.sku) { if (o.sku.toLowerCase() !== it.sku.toLowerCase()) return -1; sc += 2; }
+      const dd = o.date && date ? dayDiff(o.date, date) : 99;
+      if (dd === 0) sc += 3; else if (dd <= 3) sc += 1; else if (dd > 10) return -1;
+      return sc;
+    }
+    function findOld(date, buyer, it) {
+      let best = null, bs = 0, tie = false;
+      loose.forEach((o) => {
+        if (used.has(o)) return;
+        const sc = score(o, date, buyer, it);
+        if (sc > bs) { best = o; bs = sc; tie = false; } else if (sc === bs && sc > 0) tie = true;
+      });
+      return bs >= 6 && !tie ? best : null;
+    }
+    // tên Shopee dạng "Tên sản phẩm | T002": tách mã SP ở cuối
+    const splitName = (it) => { const m = it.name.match(/^(.*?)\s*\|\s*([A-Za-z0-9][\w.\-]{0,30})\s*$/); if (m) { it.name = m[1].trim(); if (!it.sku) it.sku = m[2]; } return it; };
+    const now = new Date().toISOString();
+    // ghép đơn ghi tay: ưu tiên đơn Shopee không bị hủy trước
+    const isCancel = (rs) => norm(get(rs[0], "Trạng Thái Đơn Hàng")) === "da huy";
+    [...by.entries()].sort((a, b) => isCancel(a[1]) - isCancel(b[1])).forEach(([code, rs]) => {
+      const r0 = rs[0];
+      const its = rs.map((row) => splitName({ name: String(get(row, "Tên sản phẩm") || "").trim(), variant: String(get(row, "Tên phân loại hàng") || "").trim(), qty: num(get(row, "Số lượng")) || 1, ret: num(get(row, "Số lượng sản phẩm được hoàn trả")), price: num(get(row, "Giá ưu đãi")), sku: String(get(row, "SKU phân loại hàng") || get(row, "SKU sản phẩm") || "").trim() }));
+      const odate = day(get(r0, "Ngày đặt hàng"));
+      const mx = (k) => Math.max(0, ...rs.map((row) => num(get(row, k))));
+      const qty = its.reduce((a, it) => a + it.qty, 0), ret = its.reduce((a, it) => a + it.ret, 0);
+      const revenue = Math.max(0, Math.round(its.reduce((a, it) => a + it.price * Math.max(0, it.qty - it.ret), 0) - mx("Mã giảm giá của Shop") - mx("Giảm giá từ Combo của Shop")));
+      const fee = Math.round(mx("Phí cố định") + mx("Phí Dịch Vụ") + mx("Phí xử lý giao dịch"));
+      const sst = norm(get(r0, "Trạng Thái Đơn Hàng"));
+      const target = sst === "hoan thanh" ? (ret && ret >= qty ? "back" : "done") : sst === "da huy" ? "back" : null;
+      const buyer = String(get(r0, "Người Mua") || "").trim();
+      let old = byCode.get(code), linked = false;
+      if (!old) { old = findOld(odate, buyer, its[0]); if (old) { used.add(old); linked = true; } }
+      if (!old) {
+        const [m, ...rest] = its;
+        const o = { id: newId(), date: day(get(r0, "Ngày đặt hàng")) || today(), sku: m.sku, name: m.name, cost: 0, ship: 0, revenue, done: target === "done",
+          extra: { [F.ma.id]: code, [F.kh.id]: buyer, [F.pl.id]: m.variant, [F.ps.id]: fee || "", _qty: m.qty, _cny: "", _rate: "", _ord: false, _st: target === "done" ? undefined : target === "back" ? "huy" : "new",
+            _items: rest.length ? rest.map((it) => ({ sku: it.sku, name: it.name, f: it.variant ? { [F.pl.id]: it.variant } : {}, qty: it.qty, cny: 0, rate: 0, unit: 0, cost: 0 })) : undefined },
+          createdAt: now, updatedAt: now };
+        res.add.push(o);
+        newBy.push({ code, buyer, label: (m.variant || m.name).slice(0, 30) });
+        return;
+      }
+      const x = old.extra || {};
+      const before = stOf(old);
+      const n = { ...old, extra: { ...x } };
+      if (linked) {
+        n.extra[F.ma.id] = code;
+        if (!n.sku && its[0].sku) n.sku = its[0].sku;
+        res.lines.push("🔗 " + code + " → đơn ghi tay ngày " + dmy(old.date || "") + " (" + (buyer || "") + (x[F.pl.id] ? ", " + x[F.pl.id] : "") + ")");
+      }
+      n.revenue = revenue;
+      n.extra[F.ps.id] = fee || "";
+      if (!n.extra[F.kh.id] && buyer) n.extra[F.kh.id] = buyer;
+      if (target === "done") { n.done = true; }
+      else if (target === "back" && before !== "stock" && before !== "huy") { n.done = false; n.extra._st = x._ord ? "stock" : "huy"; }
+      const after = stOf(n);
+      const changed = linked || after !== before || (old.revenue || 0) !== n.revenue || Number(x[F.ps.id] || 0) !== Number(n.extra[F.ps.id] || 0) || x[F.kh.id] !== n.extra[F.kh.id];
+      if (!changed) { res.same++; return; }
+      n.updatedAt = now;
+      res.upd.push({ old, n });
+      if (linked) res.linked = (res.linked || 0) + 1;
+      if (after !== before) { res.nst = (res.nst || 0) + 1; res.lines.push(code + " (" + (n.name || "").slice(0, 30) + "): " + ST_LABEL[before] + " → " + ST_LABEL[after]); }
+    });
+    newBy.forEach(({ code, buyer, label }) => {
+      const maybe = buyer && loose.find((c) => !used.has(c) && norm((c.extra || {})[F.kh.id]) === norm(buyer));
+      if (maybe) res.warn.push("⚠ " + code + " (" + buyer + ", " + label + ") sẽ thành đơn mới, nhưng có đơn ghi tay ngày " + dmy(maybe.date || "") + " cùng khách chưa có mã: kiểm tra xem có trùng không");
+    });
+    if (C["Mã đơn hàng"] < 0) res.errors.push("Không thấy cột Mã đơn hàng");
+    return res;
+  }
+  function applyShopee() {
+    const r = imp.orders;
+    if (r.fieldsPlan.length) { fields.push(...r.fieldsPlan); normLayout(); enqueue({ op: "fields", fields: cfgPayload() }); }
+    r.upd.forEach(({ old, n }) => Object.assign(old, n));
+    orders.push(...r.add);
+    const list = r.add.concat(r.upd.map((u) => u.old));
+    try { save(); } catch (e) { toast("Bộ nhớ trình duyệt đầy, không cập nhật được."); return; }
+    if (list.length) { if (serverVer >= 3) enqueue({ op: "orders_upsert_many", orders: list }); else list.forEach((o) => enqueue({ op: "upsert", order: o })); }
+    imp.orders = null; renderImp("orders");
+    if (r.fieldsPlan.length) { renderFieldList(); renderExtraInputs(); }
+    render();
+    toast("Shopee: thêm " + r.add.length + " đơn, cập nhật " + r.upd.length + " đơn");
+    recordUpload("orders", r.file, { rows: r.total, added: r.add.length, updated: r.upd.length, skipped: r.same });
+  }
+
   const imp = { orders: null, products: null };
   const PFX = { orders: "impO", products: "impP" };
   function renderImp(kind) {
@@ -2287,7 +2517,22 @@ function readFields_(cfg) {
     if (r.errors.length > 8) errs.append(el("li", { textContent: "… và " + (r.errors.length - 8) + " lỗi khác" }));
     errs.hidden = !r.errors.length;
     let n, msg;
-    if (kind === "orders") {
+    $("impOList").hidden = true;
+    if (kind === "orders" && r.shopee) {
+      n = r.add.length + r.upd.length;
+      const c = (st) => r.add.filter((o) => stOf(o) === st).length;
+      msg = "File Shopee “" + r.file.name + "”: " + r.total + " dòng, " + (r.add.length + r.upd.length + r.same) + " đơn. " +
+        r.add.length + " đơn mới" + (r.add.length ? " (" + [["done", "hoàn thành"], ["new", "đang xử lý"], ["huy", "đã hủy"]].filter(([k]) => c(k)).map(([k, t]) => c(k) + " " + t).join(", ") + ")" : "") +
+        " · " + r.upd.length + " đơn cập nhật (" + (r.nst || 0) + " đổi trạng thái" + (r.linked ? ", " + r.linked + " đơn cũ được gắn mã" : "") + ") · " + r.same + " đơn không đổi." +
+        (r.fieldsPlan.length ? " Sẽ thêm cột: " + r.fieldsPlan.map((f) => f.name).join(", ") + "." : "");
+      const ul = $("impOList"); ul.textContent = "";
+      const all = r.warn.concat(r.lines);
+      all.slice(0, 30).forEach((t) => ul.append(el("li", { textContent: t, style: t[0] === "⚠" ? "color:var(--stk)" : "" })));
+      if (all.length > 30) ul.append(el("li", { textContent: "… và " + (all.length - 30) + " dòng khác" }));
+      ul.hidden = !all.length;
+      $("impODupWrap").hidden = true;
+      $("impOYes").textContent = n ? "Cập nhật " + n + " đơn" : "Không có gì mới";
+    } else if (kind === "orders") {
       const dups = r.dupFlags.filter(Boolean).length;
       const withDup = $("impODup").checked;
       n = withDup ? r.rows.length : r.rows.length - dups;
@@ -2396,13 +2641,17 @@ function readFields_(cfg) {
       if (!f) return;
       $(P + "Pick").disabled = true;
       try {
-        imp[kind] = await (kind === "orders" ? parseOrdersFile(f) : parseProductsFile(f));
+        if (kind === "orders") {
+          const rows = await readRows(f);
+          const at = rows.slice(0, 5).findIndex(isShopeeHead);
+          imp[kind] = at >= 0 ? parseShopee(rows, at, f) : await parseOrdersFile(f);
+        } else imp[kind] = await parseProductsFile(f);
         if (kind === "orders") $("impODup").checked = false;
         renderImp(kind);
       } catch (err) { imp[kind] = null; renderImp(kind); toast(err.message || "Không đọc được file này"); }
       $(P + "Pick").disabled = false;
     });
-    $(P + "Yes").addEventListener("click", () => { if (imp[kind]) (kind === "orders" ? applyOrders : applyProducts)(); });
+    $(P + "Yes").addEventListener("click", () => { if (imp[kind]) (kind === "orders" ? (imp.orders.shopee ? applyShopee : applyOrders) : applyProducts)(); });
     $(P + "No").addEventListener("click", () => { imp[kind] = null; renderImp(kind); });
   });
   $("impODup").addEventListener("change", () => renderImp("orders"));
