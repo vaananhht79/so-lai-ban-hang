@@ -2528,19 +2528,39 @@ function readFields_(cfg) {
         if (!n.sku && its[0].sku) n.sku = its[0].sku;
         res.lines.push("🔗 " + code + " → đơn ghi tay ngày " + dmy(old.date || "") + " (" + (buyer || "") + (x[F.pl.id] ? ", " + x[F.pl.id] : "") + ")");
       }
-      if (x._paid == null) { n.revenue = revenue; n.extra[F.ps.id] = fee || ""; } // đã đối soát bằng file Doanh thu thì giữ số chính xác
-      // giá bán từng SP (để chia doanh thu theo sản phẩm); chỉ ghi khi số SP khớp
-      if (!Number(x._price) && its.length === 1 + itemsOf(old).length) {
-        n.extra._price = its[0].price;
-        if (its.length > 1) n.extra._items = itemsOf(old).map((it, i) => ({ ...it, price: its[i + 1].price }));
-      }
-      if (!n.extra[F.kh.id] && buyer) n.extra[F.kh.id] = buyer;
-      if (target === "done") { n.done = true; n.extra._ord = true; }
-      else if (target === "back" && x._st !== "stock" && x._st !== "huy") { n.done = false; n.extra._st = "huy"; } // đã hủy: có tích Đã order thì thành tồn kho (xem stOf)
-      else if (target === "return" && before !== "stock") { n.done = false; n.extra._st = "stock"; n.extra._ord = true; }
-      else if (target === "proc" && before !== "new" && before !== "ord") { n.done = false; n.extra._st = "new"; }
+      // File Shopee ghi đè mọi thông tin đơn; chỉ giữ phần bạn tự nhập: Tệ, tỷ giá, ô Đã order, tiền ship (và tiền nhập)
+      if (x._paid == null) { n.revenue = revenue; n.extra[F.ps.id] = fee || ""; } // riêng doanh thu/phí sàn đã đối soát bằng file Doanh thu thì giữ số chính xác
+      if (odate) n.date = odate;
+      if (buyer) n.extra[F.kh.id] = buyer;
+      const sub = itemsOf(old).map((it) => ({ ...it }));
+      if (its.length === 1 + sub.length) {
+        const r0 = (v) => Number(v) || 0;
+        const m = its[0];
+        if (m.name) n.name = m.name;
+        if (m.sku) n.sku = m.sku;
+        n.extra[F.pl.id] = m.variant;
+        n.extra._price = m.price;
+        let main = (old.cost || 0) - itemsCost(sub);
+        if (m.qty !== qtyOf(old)) { n.extra._qty = m.qty; if (r0(x._cny)) main = costFromCny(r0(x._cny), r0(x._rate)) * m.qty; }
+        sub.forEach((it, i) => {
+          const s2 = its[i + 1];
+          if (s2.name) it.name = s2.name;
+          if (s2.sku) it.sku = s2.sku;
+          it.f = { ...(it.f || {}), [F.pl.id]: s2.variant };
+          it.price = s2.price;
+          if (s2.qty !== (r0(it.qty) || 1)) { it.qty = s2.qty; it.cost = it.cny ? costFromCny(r0(it.cny), r0(it.rate) || r0(x._rate)) * s2.qty : it.unit ? Math.round(r0(it.unit) * s2.qty) : it.cost; }
+        });
+        if (sub.length) n.extra._items = sub;
+        n.cost = main + itemsCost(sub);
+      } else res.warn.push("⚠ " + code + ": số sản phẩm trong sổ (" + (1 + sub.length) + ") khác file Shopee (" + its.length + ") → chỉ cập nhật trạng thái, khách, doanh thu, phí");
+      // trạng thái luôn theo file
+      if (target === "done") { n.done = true; }
+      else if (target === "back") { n.done = false; n.extra._st = "huy"; } // đã hủy: có tích Đã order thì thành tồn kho (xem stOf)
+      else if (target === "return") { n.done = false; n.extra._st = "stock"; }
+      else if (target === "proc") { n.done = false; n.extra._st = "new"; }
       const after = stOf(n);
-      const changed = linked || after !== before || !!x._ord !== !!n.extra._ord || (old.revenue || 0) !== n.revenue || Number(x[F.ps.id] || 0) !== Number(n.extra[F.ps.id] || 0) || x[F.kh.id] !== n.extra[F.kh.id];
+      const strip = (o) => JSON.stringify({ ...o, updatedAt: 0 });
+      const changed = linked || strip(old) !== strip(n);
       if (!changed) { res.same++; return; }
       n.updatedAt = now;
       res.upd.push({ old, n });
@@ -2588,7 +2608,7 @@ function readFields_(cfg) {
       n.revenue = rev;
       n.extra[F.ps.id] = rev - p.paid;   // phí sàn = mọi khoản Shopee trừ (phí, PiShip, thuế…) → lãi khớp đúng tiền về
       n.extra._paid = p.paid;
-      if (!p.ref && !old.done && before !== "huy") { n.done = true; n.extra._ord = true; } // đã nhận tiền, không hoàn → hoàn thành
+      if (!p.ref && !old.done && before !== "huy") n.done = true; // đã nhận tiền, không hoàn → hoàn thành
       const after = stOf(n);
       if (x._paid === p.paid && after === before && !!x._ord === !!n.extra._ord && (old.revenue || 0) === rev) { res.same++; return; }
       n.updatedAt = now;
@@ -2708,14 +2728,17 @@ function readFields_(cfg) {
       if (kept) res.keep++;
       if (sub.length) n.extra._items = sub;
       n.cost = main + itemsCost(sub);
-      n.extra._ord = ordO || st === "done" || !!old.done;
+      n.extra._ord = iOrd >= 0 ? ordO : ordO || !!x._ord; // cột Đã order trong file là số bạn tự ghi
+      if (ls[0].buyer) n.extra[F.kh.id] = ls[0].buyer;
+      if (ls[0].date) n.date = ls[0].date;
       const before = stOf(old);
-      // trạng thái: hoàn thành luôn áp; đã hủy khi chưa hoàn thành; "đang xử lý" không kéo lùi đơn đã xong/hủy
+      // trạng thái luôn theo file
       if (st === "done") n.done = true;
-      else if (st === "huy" && !old.done && x._st !== "huy") { n.done = false; n.extra._st = "huy"; }
+      else if (st === "huy") { n.done = false; n.extra._st = "huy"; }
+      else if (st === "new") { n.done = false; n.extra._st = "new"; }
       const after = stOf(n);
       const costChanged = n.cost !== (old.cost || 0);
-      if (!costChanged && after === before && !!x._ord === n.extra._ord && n.done === !!old.done) { res.same++; return; }
+      if (JSON.stringify({ ...old, updatedAt: 0 }) === JSON.stringify({ ...n, updatedAt: 0 })) { res.same++; return; }
       n.updatedAt = now;
       res.upd.push({ old, n });
       res.lines.push(code + " (" + (old.name || "").slice(0, 30) + "): " + [costChanged ? "tiền nhập " + fmt(old.cost || 0) + " → " + fmt(n.cost) : "", after !== before ? ST_LABEL[before] + " → " + ST_LABEL[after] : ""].filter(Boolean).join(" · "));
