@@ -465,7 +465,7 @@ td.n .stack { justify-items: end; }
       <datalist id="skuList"></datalist>
       <div class="sku-hint" id="skuHint" hidden><span id="skuHintMsg"></span><button type="button" id="skuAdd">Thêm sản phẩm này</button></div>
       <div class="form-foot">
-        <label class="check">Trạng thái <select id="fSt"><option value="new">Chưa order</option><option value="ord">Đã order</option><option value="done">Hoàn thành</option><option value="stock">Tồn kho</option><option value="huy">Đã hủy</option></select></label>
+        <label class="check">Trạng thái <select id="fSt"><option value="new">Đang xử lý</option><option value="done">Hoàn thành</option><option value="stock">Tồn kho</option><option value="huy">Đã hủy</option></select></label>
         <span class="preview" id="preview"></span>
         <div class="right">
           <button type="button" id="cancelEdit">Đóng</button>
@@ -1031,6 +1031,9 @@ function readFields_(cfg) {
       const p = layout.findIndex((x) => x.key === "profit");
       layout.splice(p < 0 ? layout.length : p, 0, c);
     };
+    const oi = layout.findIndex((c) => c.key === "ordered");
+    if (oi > 0 && !layout[oi].first) { const [c] = layout.splice(oi, 1); layout.unshift(c); }
+    if (oi >= 0) layout[0].key === "ordered" && (layout[0].first = 1);
     DEFAULT_ORDER.forEach((k, i) => {
       if (seen.has(k)) return;
       seen.add(k);
@@ -1332,8 +1335,6 @@ function readFields_(cfg) {
     if (inp.classList && inp.classList.contains("money") && !inp.disabled && inp.value.trim()) inp.value = parseMoney(inp.value).toLocaleString("vi-VN");
   });
   // Đồng bộ ô "Đã order" với trạng thái
-  $("fSt").addEventListener("change", () => { const v = $("fSt").value; if (v === "ord") $("fOrd").checked = true; if (v === "new") $("fOrd").checked = false; });
-  $("fOrd").addEventListener("change", () => { const v = $("fSt").value; if ($("fOrd").checked && v === "new") $("fSt").value = "ord"; if (!$("fOrd").checked && v === "ord") $("fSt").value = "new"; });
   $("form").addEventListener("input", updatePreview);
   $("form").addEventListener("change", updatePreview);
 
@@ -1548,7 +1549,7 @@ function readFields_(cfg) {
     onCny();
     $("fShip").value = money(o.ship);
     $("fRev").value = money(o.revenue);
-    $("fSt").value = stOf(o);
+    $("fSt").value = stOf(o) === "ord" ? "new" : stOf(o);
     $("fOrd").checked = !!(o.extra || {})._ord;
     $("fNote").value = (o.extra || {})._note || "";
     fillExtra(o.extra);
@@ -1763,7 +1764,7 @@ function readFields_(cfg) {
       let c = b.querySelector(".cnt"); if (!c) { c = el("span", { className: "cnt" }); b.append(c); }
       c.textContent = cnt[b.dataset.f];
     });
-    $("legend").textContent = "Nền trắng: chưa order · vàng: đã order · xanh: hoàn thành · đỏ: tồn kho · xám: đã hủy (không tính tiền). Bấm ô trạng thái để đổi. Đơn chưa xong có lãi âm bằng tiền nhập + ship" + (hasMinus ? " + các khoản trừ." : ".");
+    $("legend").textContent = "Tích ô “Đã order” khi đã đặt hàng. Nền trắng: chưa order · vàng: đã order · xanh: hoàn thành · đỏ: tồn kho (hàng nằm lại chỗ bạn, VD đã order rồi khách hủy) · xám: đã hủy khi chưa order (không tính tiền). Đơn chưa xong có lãi âm bằng tiền nhập + ship" + (hasMinus ? " + các khoản trừ." : ".");
   }
   function colClass(c) {
     const f = fieldOf(c.key);
@@ -1801,8 +1802,9 @@ function readFields_(cfg) {
       case "status": {
         const st = stOf(o);
         const pill = el("select", { className: "pill " + ST_CLS[st], title: "Đổi trạng thái" });
-        ["new", "ord", "done", "stock", "huy"].forEach((v) => pill.append(el("option", { value: v, textContent: (v === "done" ? "✓ " : "") + ST_LABEL[v] })));
-        pill.value = st;
+        const busy = st === "ord" ? "ord" : "new";
+        ["new", "done", "stock", "huy"].forEach((v) => pill.append(el("option", { value: v, textContent: v === "new" ? ST_LABEL[busy] : (v === "done" ? "✓ " : "") + ST_LABEL[v] })));
+        pill.value = st === "ord" ? "new" : st;
         pill.addEventListener("change", () => setStatus(o, pill.value));
         return el("td", { className: "st-c" }, pill);
       }
@@ -1900,9 +1902,7 @@ function readFields_(cfg) {
   function toggleOrdered(o, v) {
     const st = stOf(o);
     o.extra = { ...(o.extra || {}), _ord: v };
-    if (st === "huy") { /* giữ đã hủy */ }
-    else if (!o.done && st !== "stock") o.extra._st = v ? "ord" : "new";
-    else if (!o.done && v) o.extra._st = "ord";
+    if (st === "new" || st === "ord") o.extra._st = "new"; // đang xử lý: trắng/vàng theo ô Đã order; tồn kho, hoàn thành, đã hủy giữ nguyên
     try { o.updatedAt = new Date().toISOString(); save(); enqueue({ op: "upsert", order: o }); }
     catch (e) { toast("Không cập nhật được."); }
     render();
@@ -1911,9 +1911,9 @@ function readFields_(cfg) {
     const x = { ...(o.extra || {}) };
     if (v !== "done") x._st = v;
     if (v === "ord") x._ord = true;
-    if (v === "new") x._ord = false;
+
     o.done = v === "done"; o.extra = x;
-    try { o.updatedAt = new Date().toISOString(); save(); enqueue({ op: "upsert", order: o }); toast("Đã chuyển sang " + ST_LABEL[v].toLowerCase()); }
+    try { o.updatedAt = new Date().toISOString(); save(); enqueue({ op: "upsert", order: o }); toast("Đã chuyển sang " + ST_LABEL[stOf(o)].toLowerCase()); }
     catch (e) { toast("Không cập nhật được."); }
     render();
   }
