@@ -2600,14 +2600,17 @@ function readFields_(cfg) {
     return res;
   }
   // ----- file giá vốn tự ghi (Người mua, Tên SP, Phân loại, SL, Ngày đặt, Tệ, Cân thực, Thành tiền, MĐH) -----
-  // Tệ, Thành tiền là tổng của cả dòng. Tiền nhập = Thành tiền; thiếu Thành tiền mà có Tệ → Tệ × tỷ giá đang dùng.
+  // Tệ, Thành tiền là tổng của cả dòng. Có cột Đã order thì cột đó quyết định: chưa order → không tính tiền nhập;
+  // đã order: Tiền nhập = Thành tiền, thiếu Thành tiền mà có Tệ → tạm tính, không có Tệ → lấy hàng tồn (tiền nhập 0).
+  // Cột Trạng thái (chữ Shopee) → hoàn thành / đã hủy / đang xử lý.
   // Đơn có trong sổ (theo Mã đơn): điền tiền nhập vào đúng phân loại, không ghi đè tiền nhập đã có. Đơn chưa có → tạo mới.
   const isCostHead = (row) => { const n = (row || []).map(norm); return n.includes("mdh") && (n.includes("te") || n.includes("thanh tien")); };
   function parseCost(rows, at, file, book) {
     const head = rows[at].map(norm);
     const ci = (...names) => { for (const k of names) { const i = head.indexOf(norm(k)); if (i >= 0) return i; } return -1; };
     const iCode = ci("MĐH", "Mã đơn hàng"), iBuyer = ci("Người mua"), iName = ci("Tên SP", "Tên sản phẩm"), iVar = ci("Phân loại"), iQty = ci("SL", "Số lượng"),
-      iDate = ci("Ngày đặt"), iCny = ci("Tệ"), iTT = ci("Thành tiền"), iSku = ci("Mã SP", "SKU");
+      iDate = ci("Ngày đặt"), iCny = ci("Tệ"), iTT = ci("Thành tiền"), iSku = ci("Mã SP", "SKU"),
+      iSt = ci("Trạng thái", "Trạng Thái Đơn Hàng"), iOrd = ci("Đã order");
     const num = (v) => Number(String(v == null ? "" : v).replace(/,/g, "")) || 0;
     const day = (v) => typeof v === "number" ? new Date(Math.round((v - 25569) * 864e5)).toISOString().slice(0, 10) : String(v || "").trim().slice(0, 10);
     const nv = (v) => norm(v).replace(/ /g, "");
@@ -2623,51 +2626,60 @@ function readFields_(cfg) {
     const plan = F.plan.filter((f) => f !== F.ps);
     const res = { shopee: true, cost: true, file, total: 0, errors: [], fieldsPlan: plan, F, add: [], upd: [], same: 0, lines: [], warn: [], keep: 0, noCost: 0 };
     const raw = [];
+    // trạng thái chữ Shopee → hoàn thành / đã hủy / đang xử lý
+    const stTarget = (v) => { const t = norm(v); return !t ? null : t === "hoan thanh" || /^nguoi mua xac nhan da nhan/.test(t) ? "done" : t === "da huy" ? "huy" : "new"; };
     for (let i = at + 1; i < rows.length; i++) {
       const row = rows[i] || [];
       const code = String(row[iCode] || "").trim().toUpperCase();
       if (!code) continue;
       res.total++;
-      const name = String(row[iName] || "").trim();
+      const name = String(row[iName] || "").trim(), cny = num(row[iCny]), tt = Math.round(num(row[iTT]));
       raw.push({ code, buyer: String(iBuyer >= 0 ? row[iBuyer] : "").trim(), name, variant: String(iVar >= 0 ? row[iVar] : "").trim(), qty: num(row[iQty]) || 1,
-        date: iDate >= 0 ? day(row[iDate]) : "", sku: String(iSku >= 0 ? row[iSku] : "").trim() || skuByName.get(nv(name)) || "", cny: num(row[iCny]), tt: Math.round(num(row[iTT])) });
+        date: iDate >= 0 ? day(row[iDate]) : "", sku: String(iSku >= 0 ? row[iSku] : "").trim() || skuByName.get(nv(name)) || "", cny, tt,
+        st: iSt >= 0 ? stTarget(row[iSt]) : null, ord: iOrd >= 0 ? boolCell(row[iOrd], false) : cny > 0 || tt > 0 });
     }
-    // dòng chỉ có Tệ: tạm tính theo tỷ giá (Thành tiền ÷ Tệ, gồm cả tiền cân) trung vị cùng tháng trong file; tháng không có thì dùng tỷ giá đang dùng
+    // dòng đã order chỉ có Tệ: tạm tính theo tỷ giá (Thành tiền ÷ Tệ, gồm cả tiền cân) trung vị cùng tháng trong file; tháng không có thì dùng tỷ giá đang dùng
     const mRates = {};
     raw.forEach((l) => { if (l.cny && l.tt) (mRates[l.date.slice(0, 7)] = mRates[l.date.slice(0, 7)] || []).push(l.tt / l.cny); });
     const med = (a) => { a = a.slice().sort((p, q) => p - q); return Math.round(a.length % 2 ? a[a.length >> 1] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2); };
     const rateOf = (d) => (mRates[d.slice(0, 7)] ? med(mRates[d.slice(0, 7)]) : lastRate());
-    const est = {}, noRate = [];
+    const est = {}, noRate = [], fromStock = [], doneNoOrd = [];
     const by = new Map();
     raw.forEach((l) => {
-      let rate = l.cny && l.tt ? Math.round(l.tt / l.cny) : 0, cost = l.tt;
-      if (!l.tt && l.cny) {
-        rate = rateOf(l.date); cost = costFromCny(l.cny, rate);
-        if (rate) { const m = l.date.slice(5, 7) + "/" + l.date.slice(0, 4); est[m] = est[m] || { rate, n: 0, own: !!mRates[l.date.slice(0, 7)] }; est[m].n++; } else noRate.push(l.code);
-      }
+      let rate = 0, cost = 0, ucny = 0;
+      if (l.ord) {
+        if (l.tt) { cost = l.tt; rate = l.cny ? Math.round(l.tt / l.cny) : 0; }
+        else if (l.cny) {
+          rate = rateOf(l.date); cost = costFromCny(l.cny, rate);
+          if (rate) { const m = l.date.slice(5, 7) + "/" + l.date.slice(0, 4); est[m] = est[m] || { rate, n: 0, own: !!mRates[l.date.slice(0, 7)] }; est[m].n++; } else noRate.push(l.code);
+        }
+        if (!l.cny && !l.tt) fromStock.push(l.code);
+        ucny = l.cny ? Math.round(l.cny / l.qty * 100) / 100 : 0;
+      } else if (l.st === "done") doneNoOrd.push(l.code);
       if (!by.has(l.code)) by.set(l.code, []);
-      by.get(l.code).push({ ...l, cost, rate, ucny: l.cny ? Math.round(l.cny / l.qty * 100) / 100 : 0 });
+      by.get(l.code).push({ ...l, cost, rate, ucny });
     });
-    Object.keys(est).forEach((m) => res.warn.push("⚠ " + est[m].n + " dòng tháng " + m + " có Tệ nhưng chưa có Thành tiền → tạm tính theo tỷ giá " + money(est[m].rate) + (est[m].own ? " (trung bình Thành tiền ÷ Tệ cùng tháng trong file, gồm cả tiền cân)" : " (tỷ giá đang dùng trong sổ, vì tháng này file không có dòng nào đủ Tệ + Thành tiền)")));
-    if (noRate.length) res.warn.push("⚠ " + noRate.length + " dòng có Tệ nhưng chưa có Thành tiền, không có tỷ giá để tính: " + noRate.slice(0, 5).join(", ") + (noRate.length > 5 ? "…" : ""));
+    Object.keys(est).forEach((m) => res.warn.push("⚠ " + est[m].n + " dòng tháng " + m + " đã order, có Tệ nhưng chưa có Thành tiền → tạm tính theo tỷ giá " + money(est[m].rate) + (est[m].own ? " (trung bình Thành tiền ÷ Tệ cùng tháng trong file, gồm cả tiền cân)" : " (tỷ giá đang dùng trong sổ)")));
+    if (noRate.length) res.warn.push("⚠ " + noRate.length + " dòng đã order, có Tệ nhưng chưa có Thành tiền, không có tỷ giá để tính: " + noRate.slice(0, 5).join(", ") + (noRate.length > 5 ? "…" : ""));
+    if (fromStock.length) res.lines.unshift(fromStock.length + " dòng tích Đã order nhưng không có Tệ → lấy hàng tồn, tiền nhập 0: " + fromStock.join(", "));
+    if (doneNoOrd.length) res.warn.push("⚠ " + doneNoOrd.length + " dòng Hoàn thành nhưng không tích Đã order → coi là lấy hàng tồn, tiền nhập 0 (kiểm tra lại): " + doneNoOrd.join(", "));
     const byCode = new Map();
     orders.forEach((o) => { const c = String((o.extra || {})[F.ma.id] || "").trim().toUpperCase(); if (c) byCode.set(c, o); });
     const now = new Date().toISOString();
     const costIt = (it, l) => ({ ...it, cny: l.ucny || 0, rate: l.ucny ? l.rate : 0, unit: Math.round(l.cost / l.qty), cost: l.cost });
     by.forEach((ls, code) => {
-      const withCost = ls.filter((l) => l.cost > 0 || l.cny > 0);
-      if (!withCost.length) res.noCost++;
+      const ordO = ls.some((l) => l.ord), st = ls[0].st;
+      if (!ls.some((l) => l.cost > 0)) res.noCost++;
       const old = byCode.get(code);
       if (!old) {
         const [m, ...rest] = ls;
-        const o = { id: newId(), date: m.date || today(), sku: m.sku, name: m.name, cost: ls.reduce((a, l) => a + l.cost, 0), ship: 0, revenue: 0, done: false,
-          extra: { [F.ma.id]: code, [F.kh.id]: m.buyer, [F.pl.id]: m.variant, _qty: m.qty, _cny: m.ucny || "", _rate: m.ucny ? m.rate : "", _ord: withCost.length > 0, _st: "new",
+        const o = { id: newId(), date: m.date || today(), sku: m.sku, name: m.name, cost: ls.reduce((a, l) => a + l.cost, 0), ship: 0, revenue: 0, done: st === "done",
+          extra: { [F.ma.id]: code, [F.kh.id]: m.buyer, [F.pl.id]: m.variant, _qty: m.qty, _cny: m.ucny || "", _rate: m.ucny ? m.rate : "", _ord: ordO || st === "done", _st: st === "done" ? undefined : st === "huy" ? "huy" : "new",
             _items: rest.length ? rest.map((l) => costIt({ sku: l.sku, name: l.name, f: l.variant ? { [F.pl.id]: l.variant } : {}, qty: l.qty, price: 0 }, l)) : undefined },
           createdAt: now, updatedAt: now };
         res.add.push(o);
         return;
       }
-      if (!withCost.length) { res.same++; return; }
       const its = orderItems(old);
       const used = new Set(), pairs = [];
       // ghép từng dòng với sản phẩm trong đơn: theo phân loại, không được thì theo thứ tự khi số dòng = số SP
@@ -2679,25 +2691,34 @@ function readFields_(cfg) {
       const x = old.extra || {};
       const n = { ...old, extra: { ...x } };
       const sub = itemsOf(old).map((it) => ({ ...it }));
-      let main = (old.cost || 0) - itemsCost(sub), changed = false, kept = false;
+      let main = (old.cost || 0) - itemsCost(sub), kept = false;
       pairs.forEach(([k, l]) => {
-        if (!l.cost && !l.cny) return;
+        const curCny = Number(k === 0 ? x._cny : sub[k - 1].cny) || 0;
         const cur = k === 0 ? main : Number(sub[k - 1].cost) || 0;
+        if (!l.ord) {
+          // chưa order: xoá tiền nhập do lần tải file trước tự tính từ Tệ (nhận ra nhờ Tệ trùng file)
+          if (cur > 0 && l.cny && Math.abs(curCny * l.qty - l.cny) < 0.02) { if (k === 0) { main = 0; n.extra._cny = ""; n.extra._rate = ""; } else sub[k - 1] = { ...sub[k - 1], cny: 0, rate: 0, unit: 0, cost: 0 }; }
+          return;
+        }
+        if (!l.cost) { if (cur > 0) kept = true; return; } // lấy tồn: không có tiền nhập để điền
         if (cur > 0) { if (cur !== l.cost) kept = true; return; } // đã có tiền nhập → giữ nguyên
-        if (!l.cost && Number(k === 0 ? x._cny : sub[k - 1].cny) === l.ucny) return;
         if (k === 0) { main = l.cost; n.extra._cny = l.ucny || ""; n.extra._rate = l.ucny ? l.rate : ""; }
         else sub[k - 1] = costIt(sub[k - 1], l);
-        changed = true;
       });
       if (kept) res.keep++;
-      if (!changed) { res.same++; return; }
       if (sub.length) n.extra._items = sub;
       n.cost = main + itemsCost(sub);
+      n.extra._ord = ordO || st === "done" || !!old.done;
       const before = stOf(old);
-      if (!x._ord) { n.extra._ord = true; if (before === "new") n.extra._st = "new"; }
+      // trạng thái: hoàn thành luôn áp; đã hủy khi chưa hoàn thành; "đang xử lý" không kéo lùi đơn đã xong/hủy
+      if (st === "done") n.done = true;
+      else if (st === "huy" && !old.done && x._st !== "huy") { n.done = false; n.extra._st = "huy"; }
+      const after = stOf(n);
+      const costChanged = n.cost !== (old.cost || 0);
+      if (!costChanged && after === before && !!x._ord === n.extra._ord && n.done === !!old.done) { res.same++; return; }
       n.updatedAt = now;
       res.upd.push({ old, n });
-      res.lines.push(code + " (" + (old.name || "").slice(0, 30) + "): tiền nhập " + fmt(old.cost || 0) + " → " + fmt(n.cost));
+      res.lines.push(code + " (" + (old.name || "").slice(0, 30) + "): " + [costChanged ? "tiền nhập " + fmt(old.cost || 0) + " → " + fmt(n.cost) : "", after !== before ? ST_LABEL[before] + " → " + ST_LABEL[after] : ""].filter(Boolean).join(" · "));
     });
     if (iCode < 0) res.errors.push("Không thấy cột MĐH (mã đơn hàng)");
     return res;
@@ -2733,9 +2754,9 @@ function readFields_(cfg) {
     if (kind === "orders" && r.shopee) {
       n = r.add.length + r.upd.length;
       if (r.cost) {
-        msg = "File giá vốn “" + r.file.name + "”: " + r.total + " dòng, " + (r.add.length + r.upd.length + r.same) + " đơn. " + r.upd.length + " đơn trong sổ được điền tiền nhập · " +
+        msg = "File giá vốn “" + r.file.name + "”: " + r.total + " dòng, " + (r.add.length + r.upd.length + r.same) + " đơn. " + r.upd.length + " đơn trong sổ được cập nhật · " +
           r.add.length + " đơn chưa có trong sổ sẽ thêm mới · " + r.same + " đơn không đổi" + (r.keep ? " (" + r.keep + " đơn đã có tiền nhập khác file → giữ nguyên)" : "") +
-          (r.noCost ? " · " + r.noCost + " đơn trong file chưa có Tệ/Thành tiền" : "") + "." + (r.fieldsPlan.length ? " Sẽ thêm cột: " + r.fieldsPlan.map((f) => f.name).join(", ") + "." : "");
+          (r.noCost ? " · " + r.noCost + " đơn không có tiền nhập (chưa order / lấy tồn)" : "") + "." + (r.fieldsPlan.length ? " Sẽ thêm cột: " + r.fieldsPlan.map((f) => f.name).join(", ") + "." : "");
         const ul = $("impOList"); ul.textContent = "";
         const all = r.warn.concat(r.lines);
         all.slice(0, 30).forEach((t) => ul.append(el("li", { textContent: t, style: t[0] === "⚠" ? "color:var(--stk)" : "" })));
