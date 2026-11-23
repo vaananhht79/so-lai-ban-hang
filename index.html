@@ -2529,7 +2529,7 @@ function readFields_(cfg) {
         res.lines.push("🔗 " + code + " → đơn ghi tay ngày " + dmy(old.date || "") + " (" + (buyer || "") + (x[F.pl.id] ? ", " + x[F.pl.id] : "") + ")");
       }
       // File Shopee ghi đè mọi thông tin đơn; chỉ giữ phần bạn tự nhập: Tệ, tỷ giá, ô Đã order, tiền ship (và tiền nhập)
-      if (x._paid == null) { n.revenue = revenue; n.extra[F.ps.id] = fee || ""; } // riêng doanh thu/phí sàn đã đối soát bằng file Doanh thu thì giữ số chính xác
+      n.revenue = revenue; n.extra[F.ps.id] = fee || ""; delete n.extra._paid; // doanh thu/phí sàn tạm tính; tải file Doanh thu sau để ghi đè số chính xác
       if (odate) n.date = odate;
       if (buyer) n.extra[F.kh.id] = buyer;
       const sub = itemsOf(old).map((it) => ({ ...it }));
