@@ -970,7 +970,7 @@ function readFields_(cfg) {
   const ST_LABEL = { new: "Chưa order", ord: "Đã order", done: "Hoàn thành", stock: "Tồn kho", huy: "Đã hủy" };
   // 4 trạng thái: chưa order (trắng) · đã order (vàng) · hoàn thành (xanh) · tồn kho (đỏ)
   // Đơn cũ chưa có _st: tích "Đã order" → đã order, không thì tồn kho như trước
-  const stOf = (o) => { const x = o.extra || {}; if (o.done) return "done"; if (x._st === "huy") return "huy"; if (x._st === "stock") return "stock"; if (x._st === "new" || x._st === "ord") return x._ord ? "ord" : "new"; return x._ord ? "ord" : "stock"; };
+  const stOf = (o) => { const x = o.extra || {}; if (o.done) return "done"; if (x._st === "huy") return x._ord ? "stock" : "huy"; if (x._st === "stock") return "stock"; if (x._st === "new" || x._st === "ord") return x._ord ? "ord" : "new"; return x._ord ? "ord" : "stock"; };
   // Hoàn thành: thực nhận + khoản cộng − nhập − ship − khoản trừ
   // Tồn kho:    −(nhập + ship + khoản trừ)
   function extraSum(o, effect) {
@@ -1916,7 +1916,7 @@ function readFields_(cfg) {
   function toggleOrdered(o, v) {
     const st = stOf(o);
     o.extra = { ...(o.extra || {}), _ord: v };
-    if (st === "new" || st === "ord") o.extra._st = "new"; // đang xử lý: trắng/vàng theo ô Đã order; tồn kho, hoàn thành, đã hủy giữ nguyên
+    if (st === "new" || st === "ord") o.extra._st = "new"; // đang xử lý: trắng/vàng theo ô Đã order; đơn hủy: tích → tồn kho, bỏ tích → đã hủy (stOf); hoàn thành giữ nguyên
     try { o.updatedAt = new Date().toISOString(); save(); enqueue({ op: "upsert", order: o }); }
     catch (e) { toast("Không cập nhật được."); }
     render();
@@ -2536,7 +2536,7 @@ function readFields_(cfg) {
       }
       if (!n.extra[F.kh.id] && buyer) n.extra[F.kh.id] = buyer;
       if (target === "done") { n.done = true; n.extra._ord = true; }
-      else if (target === "back" && before !== "stock" && before !== "huy") { n.done = false; n.extra._st = x._ord ? "stock" : "huy"; }
+      else if (target === "back" && before !== "stock" && before !== "huy") { n.done = false; n.extra._st = "huy"; } // đã hủy: có tích Đã order thì thành tồn kho (xem stOf)
       else if (target === "return" && before !== "stock") { n.done = false; n.extra._st = "stock"; n.extra._ord = true; }
       else if (target === "proc" && before !== "new" && before !== "ord") { n.done = false; n.extra._st = "new"; }
       const after = stOf(n);
