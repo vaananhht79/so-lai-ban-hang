@@ -480,7 +480,7 @@ td.n .stack { justify-items: end; }
     <div class="list-head">
       <h2>Danh sách đơn</h2>
       <div class="list-acts">
-        <button type="button" class="btn-primary" id="impOPick" title="File tải từ Shopee: Kênh Người Bán → Đơn hàng → Xuất">⬆ Tải file Shopee</button>
+        <button type="button" class="btn-primary" id="impOPick" title="File Đơn hàng (Đơn hàng → Xuất) hoặc file Doanh thu (Tài chính → Doanh thu → Xuất) của Shopee">⬆ Tải file Shopee</button>
         <button type="button" id="newOrder">+ Thêm đơn</button>
         <button type="button" id="impOTpl" hidden>Tải file mẫu</button>
         <input type="file" id="impOFile" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>
@@ -527,6 +527,7 @@ td.n .stack { justify-items: end; }
       <label class="rng">Xếp theo <select id="sumSort">
         <option value="sold">SL bán nhiều nhất</option>
         <option value="var">Phân loại bán nhiều nhất</option>
+        <option value="rev">Doanh thu cao nhất</option>
         <option value="ppu">Lãi / SP cao nhất</option>
         <option value="tot">Tổng SL (mọi trạng thái)</option>
       </select></label>
@@ -535,7 +536,7 @@ td.n .stack { justify-items: end; }
     <div class="bars" id="sumChart" role="img"></div>
     <div class="sum-wrap">
       <table class="sumt">
-        <thead><tr><th>Mã SP</th><th class="nm">Tên hàng</th><th>Phân loại</th><th class="n"><i class="dot new"></i><span class="long">Chưa order</span><span class="short">Chưa</span></th><th class="n"><i class="dot ord"></i><span class="long">Đã order</span><span class="short">Đã đặt</span></th><th class="n"><i class="dot done"></i><span class="long">Hoàn thành</span><span class="short">Xong</span></th><th class="n"><i class="dot stk"></i><span class="long">Tồn kho</span><span class="short">Tồn</span></th><th class="n"><span class="long">Tổng SL</span><span class="short">Tổng</span></th><th class="n">Lãi</th><th class="n"><span class="long">Lãi / SP</span><span class="short">Lãi/SP</span></th></tr></thead>
+        <thead><tr><th>Mã SP</th><th class="nm">Tên hàng</th><th>Phân loại</th><th class="n"><i class="dot new"></i><span class="long">Chưa order</span><span class="short">Chưa</span></th><th class="n"><i class="dot ord"></i><span class="long">Đã order</span><span class="short">Đã đặt</span></th><th class="n"><i class="dot done"></i><span class="long">Hoàn thành</span><span class="short">Xong</span></th><th class="n"><i class="dot stk"></i><span class="long">Tồn kho</span><span class="short">Tồn</span></th><th class="n"><span class="long">Tổng SL</span><span class="short">Tổng</span></th><th class="n">Doanh thu</th><th class="n">Lãi</th><th class="n"><span class="long">Lãi / SP</span><span class="short">Lãi/SP</span></th></tr></thead>
         <tbody id="sumRows"></tbody>
       </table>
     </div>
@@ -978,7 +979,7 @@ function readFields_(cfg) {
     return s;
   }
   function profitOf(o) {
-    if (stOf(o) === "huy") return 0; // đơn huỷ khi chưa order: không tính tiền
+    if (stOf(o) === "huy") return -extraSum(o, "minus"); // hủy khi chưa order: không tính tiền hàng/ship, chỉ tính phí sàn bị trừ (nếu có)
     const base = (o.cost || 0) + (o.ship || 0) + extraSum(o, "minus");
     return o.done ? (o.revenue || 0) + extraSum(o, "plus") - base : -base;
   }
@@ -1016,7 +1017,7 @@ function readFields_(cfg) {
     const x = o.extra || {}, its = itemsOf(o);
     const f = {};
     fields.forEach((fd) => { if (fd.type === "text") f[fd.id] = x[fd.id]; });
-    return [{ sku: o.sku, name: o.name || (productOf(o) || {}).name || "", qty: qtyOf(o), cny: Number(x._cny) || 0, rate: Number(x._rate) || 0, cost: (o.cost || 0) - itemsCost(its), f, main: true }]
+    return [{ sku: o.sku, name: o.name || (productOf(o) || {}).name || "", qty: qtyOf(o), cny: Number(x._cny) || 0, rate: Number(x._rate) || 0, cost: (o.cost || 0) - itemsCost(its), price: Number(x._price) || 0, f, main: true }]
       .concat(its.map((it) => ({ ...it, rate: Number(it.rate) || (it.cny ? Number(x._rate) || 0 : 0), name: it.name || (productByCode(it.sku) || {}).name || "", f: it.f || {} })));
   }
   const fieldOf = (key) => key.startsWith("f:") ? fields.find((f) => f.id === key.slice(2)) : null;
@@ -1032,8 +1033,8 @@ function readFields_(cfg) {
       layout.splice(p < 0 ? layout.length : p, 0, c);
     };
     const oi = layout.findIndex((c) => c.key === "ordered");
-    if (oi > 0 && !layout[oi].first) { const [c] = layout.splice(oi, 1); layout.unshift(c); }
-    if (oi >= 0) layout[0].key === "ordered" && (layout[0].first = 1);
+    // một lần: đưa cột tích "Đã order" lên đầu (giữ nguyên ẩn/hiện theo cấu hình của bạn)
+    if (oi >= 0 && !layout[oi].first) { const [c] = layout.splice(oi, 1); c.first = 1; layout.unshift(c); }
     DEFAULT_ORDER.forEach((k, i) => {
       if (seen.has(k)) return;
       seen.add(k);
@@ -1459,7 +1460,7 @@ function readFields_(cfg) {
   function formOrder() {
     const cny = parseCny($("fCny").value), rate = parseMoney($("fRate").value), qty = parseQty($("fQty").value);
     const its = formItems.filter((it) => it.sku || it.name || it.cny || it.unit)
-      .map((it) => ({ sku: it.sku || "", name: it.name || "", f: Object.fromEntries(Object.entries(it.f || {}).filter(([, v]) => v)), qty: Number(it.qty) || 1, cny: Number(it.cny) || 0, rate: it.cny ? itemRate(it) : 0, unit: Number(it.unit) || 0, cost: itemCost(it) }));
+      .map((it) => ({ sku: it.sku || "", name: it.name || "", f: Object.fromEntries(Object.entries(it.f || {}).filter(([, v]) => v)), qty: Number(it.qty) || 1, cny: Number(it.cny) || 0, rate: it.cny ? itemRate(it) : 0, unit: Number(it.unit) || 0, cost: itemCost(it), ...(it.price ? { price: it.price } : {}) }));
     const anyCny = cny || its.some((it) => it.cny);
     return {
       sku: (productByCode($("fSku").value) || {}).code || $("fSku").value.trim(),
@@ -1596,12 +1597,16 @@ function readFields_(cfg) {
   function renderSummary(scope) {
     const varFields = fields.filter(isVarField);
     const groups = new Map();
-    const blank = () => ({ new: 0, ord: 0, done: 0, stock: 0, tot: 0, profit: 0 });
+    const blank = () => ({ new: 0, ord: 0, done: 0, stock: 0, tot: 0, profit: 0, rev: 0 });
     scope.forEach((o) => {
       const st = stOf(o), its = orderItems(o);
       if (st === "huy") return;
       const totCost = its.reduce((a, it) => a + (Number(it.cost) || 0), 0), totQty = its.reduce((a, it) => a + (Number(it.qty) || 1), 0);
       const pool = (o.revenue || 0) + extraSum(o, "plus") - (o.ship || 0) - extraSum(o, "minus");
+      const gross = (o.revenue || 0) + extraSum(o, "plus");
+      // chia doanh thu/phí của đơn cho từng SP: theo giá bán Shopee nếu có đủ, không thì theo tiền nhập, không nữa thì theo SL
+      const totPrice = its.every((it) => Number(it.price) > 0) ? its.reduce((a, it) => a + Number(it.price) * (Number(it.qty) || 1), 0) : 0;
+      const share = (it) => totPrice ? Number(it.price) * (Number(it.qty) || 1) / totPrice : totCost ? (Number(it.cost) || 0) / totCost : (Number(it.qty) || 1) / totQty;
       its.forEach((it) => {
         const name = String(it.name || "").trim(), sku = String(it.sku || "").trim();
         if (!sku && !name) return;
@@ -1613,12 +1618,13 @@ function readFields_(cfg) {
         let v = g.vars.get(vl.toLowerCase());
         if (!v) { v = { label: vl, g, ...blank() }; g.vars.set(vl.toLowerCase(), v); }
         const q = Number(it.qty) || 1;
-        const pr = st === "done" ? pool * (totCost ? (Number(it.cost) || 0) / totCost : q / totQty) - (Number(it.cost) || 0) : 0;
-        for (const t of [v, g]) { t[st] += q; t.tot += q; t.profit += pr; }
+        const pr = st === "done" ? pool * share(it) - (Number(it.cost) || 0) : 0;
+        const rv = st === "done" ? gross * share(it) : 0;
+        for (const t of [v, g]) { t[st] += q; t.tot += q; t.profit += pr; t.rev += rv; }
       });
     });
     const ppu = (t) => (t.done ? t.profit / t.done : -Infinity);
-    const key = { sold: (t) => t.done, tot: (t) => t.tot, ppu, var: (t) => t.done }[sumSort];
+    const key = { sold: (t) => t.done, tot: (t) => t.tot, ppu, var: (t) => t.done, rev: (t) => t.rev }[sumSort];
     const cmp = (a, b) => key(b) - key(a) || b.tot - a.tot;
     const list = [...groups.values()].sort((a, b) => cmp(a, b) || (a.sku || a.name).localeCompare(b.sku || b.name, "vi", { numeric: true }));
     const flat = sumSort === "var";
@@ -1629,6 +1635,7 @@ function readFields_(cfg) {
     const grand = blank();
     const numTd = (n, cls) => el("td", { className: "n " + (n ? cls || "" : "z"), textContent: n ? fmt(n) : "–" });
     const moneyTds = (t) => [
+      el("td", { className: "n " + (t.done ? "" : "z"), textContent: t.done ? fmt(Math.round(t.rev)) : "–" }),
       el("td", { className: "n " + (t.done ? (t.profit < 0 ? "neg" : "pos") : "z"), textContent: t.done ? fmt(Math.round(t.profit)) : "–" }),
       el("td", { className: "n " + (t.done ? (t.profit < 0 ? "neg" : "pos") : "z"), textContent: t.done ? fmt(Math.round(t.profit / t.done)) : "–" }),
     ];
@@ -1658,8 +1665,8 @@ function readFields_(cfg) {
       tb.append(tr);
     }
     $("sumEmpty").hidden = !!blocks.length;
-    const what = { sold: "SL đã bán (đơn hoàn thành)", var: "SL bán theo phân loại", ppu: "lãi trung bình mỗi sản phẩm đã bán", tot: "tổng SL mọi trạng thái" }[sumSort];
-    $("sumNote").textContent = "Khoảng " + rangeText() + " · biểu đồ: top 10 theo " + what + ". Lãi chỉ tính đơn hoàn thành.";
+    const what = { sold: "SL đã bán (đơn hoàn thành)", var: "SL bán theo phân loại", ppu: "lãi trung bình mỗi sản phẩm đã bán", rev: "doanh thu (thực nhận đơn hoàn thành)", tot: "tổng SL mọi trạng thái" }[sumSort];
+    $("sumNote").textContent = "Khoảng " + rangeText() + " · biểu đồ: top 10 theo " + what + ". Doanh thu = thực nhận (giá bán sau mã giảm của shop), lãi = doanh thu − phí sàn − tiền nhập − ship; chỉ tính đơn hoàn thành.";
     // biểu đồ top 10
     const chart = $("sumChart"); chart.textContent = "";
     const pts = (flat ? blocks.map((b) => b[0]) : list)
@@ -1669,7 +1676,7 @@ function readFields_(cfg) {
     chart.setAttribute("aria-label", "Top " + pts.length + " theo " + what);
     pts.forEach(({ t, val }) => {
       const g = t.g || t, lab = g.sku || g.name;
-      const v = sumSort === "ppu" ? Math.round(val) : val;
+      const v = Math.round(val);
       const tip = (g.sku ? g.sku + " – " : "") + (g.name || "") + (flat ? " · " + (t.label || "không phân loại") : "") + "\n" + what + ": " + fmt(v) + (sumSort !== "ppu" ? "" : " (bán " + t.done + ")");
       const row = el("div", { className: "row", title: tip });
       const bl = el("span", { className: "bl" }, lab);
@@ -1688,7 +1695,7 @@ function readFields_(cfg) {
     let rev = 0, plus = 0, cost = 0, ship = 0, other = 0, profit = 0, stock = 0, nDone = 0, nStock = 0, nOrd = 0, nNew = 0;
     let nHuy = 0;
     scope.forEach((o) => {
-      if (stOf(o) === "huy") { nHuy++; return; }
+      if (stOf(o) === "huy") { nHuy++; const m = extraSum(o, "minus"); other += m; profit -= m; return; }
       cost += o.cost || 0; ship += o.ship || 0; other += extraSum(o, "minus"); profit += profitOf(o);
       if (o.done) { rev += o.revenue || 0; plus += extraSum(o, "plus"); nDone++; } else if (stOf(o) === "stock") { stock += (o.cost || 0) + (o.ship || 0) + extraSum(o, "minus"); nStock++; } else if (stOf(o) === "ord") nOrd++; else nNew++;
     });
@@ -1775,7 +1782,14 @@ function readFields_(cfg) {
     const f = fieldOf(c.key);
     if (f) {
       const v = (o.extra || {})[f.id];
-      if (f.type === "money") return el("td", { className: "n" + (f.effect === "plus" && !o.done ? " dim" : ""), textContent: v ? fmt(Number(v)) : "" });
+      if (f.type === "money") {
+        const td = el("td", { className: "n" + (f.effect === "plus" && !o.done ? " dim" : ""), textContent: v ? fmt(Number(v)) : "" });
+        // phí sàn lấy từ file Đơn hàng là ước tính (thiếu phí PiShip, thuế); có file Doanh thu thì là số chính xác
+        if (v && /^(phi san|phi shopee|phi san shopee)$/.test(norm(f.name)) && (o.extra || {})._paid == null && fields.some((g) => /^ma don( hang| shopee)?$/.test(norm(g.name)) && (o.extra || {})[g.id])) {
+          td.textContent = "~" + td.textContent; td.title = "Ước tính từ file Đơn hàng (chưa gồm phí PiShip, thuế). Tải file Doanh thu Shopee để có số chính xác.";
+        }
+        return td;
+      }
       if (f.type === "check") return el("td", { className: "c", textContent: v ? "✓" : "" });
       if (/^ma don( hang| shopee)?$/.test(norm(f.name))) return quick(el("td", { className: "txt", textContent: v ? String(v) : "" }), v ? String(v) : "", (t) => t.trim().toUpperCase(), (val) => { quickOrder = o; o.extra = { ...(o.extra || {}), [f.id]: val || "" }; }, true);
       return isVarField(f) ? el("td", { className: "txt full", textContent: v ? String(v) : "" }) : el("td", { className: "txt" }, v ? clip(String(v)) : "");
@@ -1784,7 +1798,7 @@ function readFields_(cfg) {
       case "date": return el("td", { className: "date-c", textContent: o.date ? o.date.split("-").reverse().join("/") : "" });
       case "name": return el("td", { className: "name" }, clip(o.name || (productOf(o) || {}).name || "(không tên)"));
       case "ordered": {
-        const cb = el("input", { type: "checkbox", checked: !!(o.extra || {})._ord, title: "Đã order" });
+        const cb = el("input", { type: "checkbox", checked: !!(o.extra || {})._ord || !!o.done, disabled: !!o.done, title: o.done ? "Đơn hoàn thành luôn tính là đã order" : "Đã order" });
         cb.setAttribute("aria-label", "Đã order");
         cb.addEventListener("change", () => toggleOrdered(o, cb.checked));
         return el("td", { className: "c ord-c" }, cb);
@@ -1910,7 +1924,7 @@ function readFields_(cfg) {
   function setStatus(o, v) {
     const x = { ...(o.extra || {}) };
     if (v !== "done") x._st = v;
-    if (v === "ord") x._ord = true;
+    if (v === "ord" || v === "done") x._ord = true;
 
     o.done = v === "done"; o.extra = x;
     try { o.updatedAt = new Date().toISOString(); save(); enqueue({ op: "upsert", order: o }); toast("Đã chuyển sang " + ST_LABEL[stOf(o)].toLowerCase()); }
@@ -2310,6 +2324,11 @@ function readFields_(cfg) {
     if (["khong", "0", "false", "no", "ton kho", "chua", "chua xong", "k"].includes(n)) return false;
     return dflt;
   }
+  async function readBook(file) {
+    const X = await loadXLSX();
+    const wb = X.read(await file.arrayBuffer(), /\.(csv|txt)$/i.test(file.name) ? { type: "array", raw: true, codepage: 65001 } : { type: "array" });
+    return wb.SheetNames.map((n) => X.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: "" }));
+  }
   async function readRows(file) {
     const X = await loadXLSX();
     const buf = await file.arrayBuffer();
@@ -2401,7 +2420,8 @@ function readFields_(cfg) {
   }
 
   // ----- file đơn Shopee: gom dòng theo Mã đơn hàng -----
-  // Hoàn thành → hoàn thành; Đã hủy / trả hết hàng → tồn kho nếu đã tích Đã order, không thì Đã hủy; trạng thái khác → giữ nguyên
+  // Trạng thái theo Shopee: Hoàn thành → hoàn thành (tự tích Đã order); trả hết hàng → tồn kho; Đã hủy → tồn kho nếu đã tích Đã order, không thì Đã hủy;
+  // trạng thái khác (chờ xác nhận, chờ lấy hàng, đang giao, đã giao…) → đang xử lý (chưa/đã order theo ô tích)
   const isShopeeHead = (row) => { const n = (row || []).map(norm); return n.includes("ma don hang") && n.includes("trang thai don hang"); };
   function shopeeFields() {
     const find = (pred) => fields.find(pred);
@@ -2413,10 +2433,11 @@ function readFields_(cfg) {
     const ps = need(find((f) => f.type === "money" && /^(phi san|phi shopee|phi san shopee)$/.test(norm(f.name))), { name: "Phí sàn", type: "money", effect: "minus" });
     return { ma, kh, pl, ps, plan };
   }
+  const PISHIP_FEE = 2700;
   function parseShopee(rows, at, file) {
     const head = rows[at].map(norm);
     const ci = (name) => head.indexOf(norm(name));
-    const C = {}; ["Mã đơn hàng", "Ngày đặt hàng", "Trạng Thái Đơn Hàng", "Tên sản phẩm", "Tên phân loại hàng", "Số lượng", "Số lượng sản phẩm được hoàn trả", "SKU phân loại hàng", "SKU sản phẩm", "Giá ưu đãi", "Mã giảm giá của Shop", "Giảm giá từ Combo của Shop", "Phí cố định", "Phí Dịch Vụ", "Phí xử lý giao dịch", "Người Mua"].forEach((k) => (C[k] = ci(k)));
+    const C = {}; ["Mã đơn hàng", "Ngày đặt hàng", "Trạng Thái Đơn Hàng", "Tên sản phẩm", "Tên phân loại hàng", "Số lượng", "Số lượng sản phẩm được hoàn trả", "SKU phân loại hàng", "SKU sản phẩm", "Giá ưu đãi", "Mã giảm giá của Shop", "Giảm giá từ Combo của Shop", "Phí cố định", "Phí Dịch Vụ", "Phí xử lý giao dịch", "Phí hoa hồng Tiếp thị liên kết", "Phí dịch vụ PiShip", "Thuế GTGT", "Thuế TNCN", "Người Mua"].forEach((k) => (C[k] = ci(k)));
     const get = (row, k) => (C[k] >= 0 ? row[C[k]] : "");
     const num = (v) => Number(String(v == null ? "" : v).replace(/,/g, "")) || 0;
     const day = (v) => typeof v === "number" ? new Date(Math.round((v - 25569) * 864e5)).toISOString().slice(0, 10) : String(v || "").trim().slice(0, 10);
@@ -2474,17 +2495,26 @@ function readFields_(cfg) {
       const mx = (k) => Math.max(0, ...rs.map((row) => num(get(row, k))));
       const qty = its.reduce((a, it) => a + it.qty, 0), ret = its.reduce((a, it) => a + it.ret, 0);
       const revenue = Math.max(0, Math.round(its.reduce((a, it) => a + it.price * Math.max(0, it.qty - it.ret), 0) - mx("Mã giảm giá của Shop") - mx("Giảm giá từ Combo của Shop")));
-      const fee = Math.round(mx("Phí cố định") + mx("Phí Dịch Vụ") + mx("Phí xử lý giao dịch"));
       const sst = norm(get(r0, "Trạng Thái Đơn Hàng"));
-      const target = sst === "hoan thanh" ? (ret && ret >= qty ? "back" : "done") : sst === "da huy" ? "back" : null;
+      // trả hết hàng → hàng về lại chỗ bạn = tồn kho; hủy → tồn kho nếu đã order, không thì đã hủy
+      const target = sst === "hoan thanh" ? (ret && ret >= qty ? "return" : "done") : sst === "da huy" ? "back" : sst ? "proc" : null;
+      // File Đơn hàng không có phí PiShip và thuế → ước tính: thuế GTGT 1% + TNCN 0,5% trên thực nhận;
+      // PiShip 2.700 chỉ khi đơn đã giao / hoàn thành (đơn đang chờ giao Shopee chưa tính PiShip). Đơn hủy thì không.
+      // Có cột thật thì dùng cột thật. Số chính xác lấy từ file Doanh thu.
+      const has = (k) => C[k] >= 0;
+      const delivered = sst === "da giao" || sst === "hoan thanh";
+      const est = target === "back" ? 0 : (has("Phí dịch vụ PiShip") ? mx("Phí dịch vụ PiShip") : delivered ? PISHIP_FEE : 0) +
+        (has("Thuế GTGT") ? mx("Thuế GTGT") : Math.round(revenue * 0.01)) + (has("Thuế TNCN") ? mx("Thuế TNCN") : Math.round(revenue * 0.005));
+      const base = Math.round(mx("Phí cố định") + mx("Phí Dịch Vụ") + mx("Phí xử lý giao dịch"));
+      const fee = base + Math.round(mx("Phí hoa hồng Tiếp thị liên kết")) + (base || target === "return" ? est : 0);
       const buyer = String(get(r0, "Người Mua") || "").trim();
       let old = byCode.get(code), linked = false;
       if (!old) { old = findOld(odate, buyer, its[0]); if (old) { used.add(old); linked = true; } }
       if (!old) {
         const [m, ...rest] = its;
         const o = { id: newId(), date: day(get(r0, "Ngày đặt hàng")) || today(), sku: m.sku, name: m.name, cost: 0, ship: 0, revenue, done: target === "done",
-          extra: { [F.ma.id]: code, [F.kh.id]: buyer, [F.pl.id]: m.variant, [F.ps.id]: fee || "", _qty: m.qty, _cny: "", _rate: "", _ord: false, _st: target === "done" ? undefined : target === "back" ? "huy" : "new",
-            _items: rest.length ? rest.map((it) => ({ sku: it.sku, name: it.name, f: it.variant ? { [F.pl.id]: it.variant } : {}, qty: it.qty, cny: 0, rate: 0, unit: 0, cost: 0 })) : undefined },
+          extra: { [F.ma.id]: code, [F.kh.id]: buyer, [F.pl.id]: m.variant, [F.ps.id]: fee || "", _price: m.price, _qty: m.qty, _cny: "", _rate: "", _ord: target === "done" || target === "return", _st: target === "done" ? undefined : target === "back" ? "huy" : target === "return" ? "stock" : "new",
+            _items: rest.length ? rest.map((it) => ({ sku: it.sku, name: it.name, f: it.variant ? { [F.pl.id]: it.variant } : {}, qty: it.qty, price: it.price, cny: 0, rate: 0, unit: 0, cost: 0 })) : undefined },
           createdAt: now, updatedAt: now };
         res.add.push(o);
         newBy.push({ code, buyer, label: (m.variant || m.name).slice(0, 30) });
@@ -2498,13 +2528,19 @@ function readFields_(cfg) {
         if (!n.sku && its[0].sku) n.sku = its[0].sku;
         res.lines.push("🔗 " + code + " → đơn ghi tay ngày " + dmy(old.date || "") + " (" + (buyer || "") + (x[F.pl.id] ? ", " + x[F.pl.id] : "") + ")");
       }
-      n.revenue = revenue;
-      n.extra[F.ps.id] = fee || "";
+      if (x._paid == null) { n.revenue = revenue; n.extra[F.ps.id] = fee || ""; } // đã đối soát bằng file Doanh thu thì giữ số chính xác
+      // giá bán từng SP (để chia doanh thu theo sản phẩm); chỉ ghi khi số SP khớp
+      if (!Number(x._price) && its.length === 1 + itemsOf(old).length) {
+        n.extra._price = its[0].price;
+        if (its.length > 1) n.extra._items = itemsOf(old).map((it, i) => ({ ...it, price: its[i + 1].price }));
+      }
       if (!n.extra[F.kh.id] && buyer) n.extra[F.kh.id] = buyer;
-      if (target === "done") { n.done = true; }
+      if (target === "done") { n.done = true; n.extra._ord = true; }
       else if (target === "back" && before !== "stock" && before !== "huy") { n.done = false; n.extra._st = x._ord ? "stock" : "huy"; }
+      else if (target === "return" && before !== "stock") { n.done = false; n.extra._st = "stock"; n.extra._ord = true; }
+      else if (target === "proc" && before !== "new" && before !== "ord") { n.done = false; n.extra._st = "new"; }
       const after = stOf(n);
-      const changed = linked || after !== before || (old.revenue || 0) !== n.revenue || Number(x[F.ps.id] || 0) !== Number(n.extra[F.ps.id] || 0) || x[F.kh.id] !== n.extra[F.kh.id];
+      const changed = linked || after !== before || !!x._ord !== !!n.extra._ord || (old.revenue || 0) !== n.revenue || Number(x[F.ps.id] || 0) !== Number(n.extra[F.ps.id] || 0) || x[F.kh.id] !== n.extra[F.kh.id];
       if (!changed) { res.same++; return; }
       n.updatedAt = now;
       res.upd.push({ old, n });
@@ -2516,6 +2552,154 @@ function readFields_(cfg) {
       if (maybe) res.warn.push("⚠ " + code + " (" + buyer + ", " + label + ") sẽ thành đơn mới, nhưng có đơn ghi tay ngày " + dmy(maybe.date || "") + " cùng khách chưa có mã: kiểm tra xem có trùng không");
     });
     if (C["Mã đơn hàng"] < 0) res.errors.push("Không thấy cột Mã đơn hàng");
+    return res;
+  }
+  // ----- file Doanh thu Shopee (Tài chính → Doanh thu → Xuất): số tiền thật về ví từng đơn, đủ mọi phí + thuế -----
+  const isIncomeHead = (row) => { const n = (row || []).map(norm); return n.includes("ma don hang") && n.includes("tong tien da thanh toan"); };
+  function parseIncome(rows, at, file) {
+    const head = rows[at].map(norm);
+    const ci = (name) => head.indexOf(norm(name));
+    const iCode = ci("Mã đơn hàng"), iKind = ci("Đơn hàng / Sản phẩm"), iPaid = ci("Tổng tiền đã thanh toán"), iPrice = ci("Giá sản phẩm"), iRef = ci("Số tiền hoàn lại");
+    const num = (v) => Number(String(v == null ? "" : v).replace(/,/g, "")) || 0;
+    const F = shopeeFields();
+    const res = { shopee: true, income: true, file, total: 0, errors: [], fieldsPlan: [], F, add: [], upd: [], same: 0, lines: [], warn: [], missing: 0 };
+    if (F.plan.some((f) => f === F.ma)) { res.errors.push("Sổ chưa có cột Mã đơn: hãy tải file Đơn hàng Shopee trước rồi mới tải file Doanh thu"); return res; }
+    if (F.plan.includes(F.ps)) res.fieldsPlan.push(F.ps);
+    const byCode = new Map();
+    orders.forEach((o) => { const c = String((o.extra || {})[F.ma.id] || "").trim().toUpperCase(); if (c) byCode.set(c, o); });
+    const seen = new Map();
+    for (let i = at + 1; i < rows.length; i++) {
+      const row = rows[i] || [];
+      const code = String(row[iCode] || "").trim().toUpperCase();
+      if (!code || (iKind >= 0 && norm(row[iKind]) !== "order")) continue;
+      const p = seen.get(code) || { paid: 0, price: 0, ref: 0 };
+      p.paid += num(row[iPaid]); p.price += num(row[iPrice]); p.ref += iRef >= 0 ? num(row[iRef]) : 0;
+      seen.set(code, p);
+    }
+    const now = new Date().toISOString();
+    seen.forEach((p, code) => {
+      res.total++;
+      const old = byCode.get(code);
+      if (!old) { res.missing++; return; }
+      const x = old.extra || {};
+      const before = stOf(old);
+      const n = { ...old, extra: { ...x } };
+      const rev = old.revenue > 0 ? old.revenue : Math.max(0, p.price + p.ref);
+      n.revenue = rev;
+      n.extra[F.ps.id] = rev - p.paid;   // phí sàn = mọi khoản Shopee trừ (phí, PiShip, thuế…) → lãi khớp đúng tiền về
+      n.extra._paid = p.paid;
+      if (!p.ref && !old.done && before !== "huy") { n.done = true; n.extra._ord = true; } // đã nhận tiền, không hoàn → hoàn thành
+      const after = stOf(n);
+      if (x._paid === p.paid && after === before && !!x._ord === !!n.extra._ord && (old.revenue || 0) === rev) { res.same++; return; }
+      n.updatedAt = now;
+      res.upd.push({ old, n });
+      res.lines.push(code + ": tiền về " + fmt(p.paid) + " (thực nhận " + fmt(rev) + " − phí sàn " + fmt(rev - p.paid) + ")" + (after !== before ? " · " + ST_LABEL[before] + " → " + ST_LABEL[after] : ""));
+      if (after !== before) res.nst = (res.nst || 0) + 1;
+    });
+    if (iPaid < 0 || iCode < 0) res.errors.push("Không thấy cột Mã đơn hàng / Tổng tiền đã thanh toán");
+    return res;
+  }
+  // ----- file giá vốn tự ghi (Người mua, Tên SP, Phân loại, SL, Ngày đặt, Tệ, Cân thực, Thành tiền, MĐH) -----
+  // Tệ, Thành tiền là tổng của cả dòng. Tiền nhập = Thành tiền; thiếu Thành tiền mà có Tệ → Tệ × tỷ giá đang dùng.
+  // Đơn có trong sổ (theo Mã đơn): điền tiền nhập vào đúng phân loại, không ghi đè tiền nhập đã có. Đơn chưa có → tạo mới.
+  const isCostHead = (row) => { const n = (row || []).map(norm); return n.includes("mdh") && (n.includes("te") || n.includes("thanh tien")); };
+  function parseCost(rows, at, file, book) {
+    const head = rows[at].map(norm);
+    const ci = (...names) => { for (const k of names) { const i = head.indexOf(norm(k)); if (i >= 0) return i; } return -1; };
+    const iCode = ci("MĐH", "Mã đơn hàng"), iBuyer = ci("Người mua"), iName = ci("Tên SP", "Tên sản phẩm"), iVar = ci("Phân loại"), iQty = ci("SL", "Số lượng"),
+      iDate = ci("Ngày đặt"), iCny = ci("Tệ"), iTT = ci("Thành tiền"), iSku = ci("Mã SP", "SKU");
+    const num = (v) => Number(String(v == null ? "" : v).replace(/,/g, "")) || 0;
+    const day = (v) => typeof v === "number" ? new Date(Math.round((v - 25569) * 864e5)).toISOString().slice(0, 10) : String(v || "").trim().slice(0, 10);
+    const nv = (v) => norm(v).replace(/ /g, "");
+    // mã SP lấy từ sheet danh mục (Tên Sản phẩm dạng "… | T002") hoặc danh mục sản phẩm trong sổ
+    const skuByName = new Map();
+    (book || []).forEach((rs) => {
+      const h = (rs[0] || []).map(norm), j = h.indexOf("ten san pham");
+      if (j < 0 || h.includes("mdh")) return;
+      rs.slice(1).forEach((r) => { const m = String(r[j] || "").match(/^(.*?)\s*\|\s*([A-Za-z0-9][\w.\-]{0,30})\s*$/); if (m) skuByName.set(nv(m[1]), m[2]); });
+    });
+    products.forEach((p) => { if (p.name && p.code && !skuByName.has(nv(p.name))) skuByName.set(nv(p.name), p.code); });
+    const F = shopeeFields();
+    const plan = F.plan.filter((f) => f !== F.ps);
+    const res = { shopee: true, cost: true, file, total: 0, errors: [], fieldsPlan: plan, F, add: [], upd: [], same: 0, lines: [], warn: [], keep: 0, noCost: 0 };
+    const raw = [];
+    for (let i = at + 1; i < rows.length; i++) {
+      const row = rows[i] || [];
+      const code = String(row[iCode] || "").trim().toUpperCase();
+      if (!code) continue;
+      res.total++;
+      const name = String(row[iName] || "").trim();
+      raw.push({ code, buyer: String(iBuyer >= 0 ? row[iBuyer] : "").trim(), name, variant: String(iVar >= 0 ? row[iVar] : "").trim(), qty: num(row[iQty]) || 1,
+        date: iDate >= 0 ? day(row[iDate]) : "", sku: String(iSku >= 0 ? row[iSku] : "").trim() || skuByName.get(nv(name)) || "", cny: num(row[iCny]), tt: Math.round(num(row[iTT])) });
+    }
+    // dòng chỉ có Tệ: tạm tính theo tỷ giá (Thành tiền ÷ Tệ, gồm cả tiền cân) trung vị cùng tháng trong file; tháng không có thì dùng tỷ giá đang dùng
+    const mRates = {};
+    raw.forEach((l) => { if (l.cny && l.tt) (mRates[l.date.slice(0, 7)] = mRates[l.date.slice(0, 7)] || []).push(l.tt / l.cny); });
+    const med = (a) => { a = a.slice().sort((p, q) => p - q); return Math.round(a.length % 2 ? a[a.length >> 1] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2); };
+    const rateOf = (d) => (mRates[d.slice(0, 7)] ? med(mRates[d.slice(0, 7)]) : lastRate());
+    const est = {}, noRate = [];
+    const by = new Map();
+    raw.forEach((l) => {
+      let rate = l.cny && l.tt ? Math.round(l.tt / l.cny) : 0, cost = l.tt;
+      if (!l.tt && l.cny) {
+        rate = rateOf(l.date); cost = costFromCny(l.cny, rate);
+        if (rate) { const m = l.date.slice(5, 7) + "/" + l.date.slice(0, 4); est[m] = est[m] || { rate, n: 0, own: !!mRates[l.date.slice(0, 7)] }; est[m].n++; } else noRate.push(l.code);
+      }
+      if (!by.has(l.code)) by.set(l.code, []);
+      by.get(l.code).push({ ...l, cost, rate, ucny: l.cny ? Math.round(l.cny / l.qty * 100) / 100 : 0 });
+    });
+    Object.keys(est).forEach((m) => res.warn.push("⚠ " + est[m].n + " dòng tháng " + m + " có Tệ nhưng chưa có Thành tiền → tạm tính theo tỷ giá " + money(est[m].rate) + (est[m].own ? " (trung bình Thành tiền ÷ Tệ cùng tháng trong file, gồm cả tiền cân)" : " (tỷ giá đang dùng trong sổ, vì tháng này file không có dòng nào đủ Tệ + Thành tiền)")));
+    if (noRate.length) res.warn.push("⚠ " + noRate.length + " dòng có Tệ nhưng chưa có Thành tiền, không có tỷ giá để tính: " + noRate.slice(0, 5).join(", ") + (noRate.length > 5 ? "…" : ""));
+    const byCode = new Map();
+    orders.forEach((o) => { const c = String((o.extra || {})[F.ma.id] || "").trim().toUpperCase(); if (c) byCode.set(c, o); });
+    const now = new Date().toISOString();
+    const costIt = (it, l) => ({ ...it, cny: l.ucny || 0, rate: l.ucny ? l.rate : 0, unit: Math.round(l.cost / l.qty), cost: l.cost });
+    by.forEach((ls, code) => {
+      const withCost = ls.filter((l) => l.cost > 0 || l.cny > 0);
+      if (!withCost.length) res.noCost++;
+      const old = byCode.get(code);
+      if (!old) {
+        const [m, ...rest] = ls;
+        const o = { id: newId(), date: m.date || today(), sku: m.sku, name: m.name, cost: ls.reduce((a, l) => a + l.cost, 0), ship: 0, revenue: 0, done: false,
+          extra: { [F.ma.id]: code, [F.kh.id]: m.buyer, [F.pl.id]: m.variant, _qty: m.qty, _cny: m.ucny || "", _rate: m.ucny ? m.rate : "", _ord: withCost.length > 0, _st: "new",
+            _items: rest.length ? rest.map((l) => costIt({ sku: l.sku, name: l.name, f: l.variant ? { [F.pl.id]: l.variant } : {}, qty: l.qty, price: 0 }, l)) : undefined },
+          createdAt: now, updatedAt: now };
+        res.add.push(o);
+        return;
+      }
+      if (!withCost.length) { res.same++; return; }
+      const its = orderItems(old);
+      const used = new Set(), pairs = [];
+      // ghép từng dòng với sản phẩm trong đơn: theo phân loại, không được thì theo thứ tự khi số dòng = số SP
+      ls.forEach((l) => { const k = its.findIndex((it, i) => !used.has(i) && l.variant && nv((it.f || {})[F.pl.id]) === nv(l.variant)); if (k >= 0) { used.add(k); pairs.push([k, l]); } });
+      if (pairs.length < ls.length) {
+        if (ls.length === its.length) { pairs.length = 0; ls.forEach((l, i) => pairs.push([i, l])); }
+        else ls.filter((l) => !pairs.some((p) => p[1] === l)).forEach((l) => res.warn.push("⚠ " + code + ": không tìm thấy phân loại “" + l.variant + "” trong đơn → bỏ qua dòng này"));
+      }
+      const x = old.extra || {};
+      const n = { ...old, extra: { ...x } };
+      const sub = itemsOf(old).map((it) => ({ ...it }));
+      let main = (old.cost || 0) - itemsCost(sub), changed = false, kept = false;
+      pairs.forEach(([k, l]) => {
+        if (!l.cost && !l.cny) return;
+        const cur = k === 0 ? main : Number(sub[k - 1].cost) || 0;
+        if (cur > 0) { if (cur !== l.cost) kept = true; return; } // đã có tiền nhập → giữ nguyên
+        if (!l.cost && Number(k === 0 ? x._cny : sub[k - 1].cny) === l.ucny) return;
+        if (k === 0) { main = l.cost; n.extra._cny = l.ucny || ""; n.extra._rate = l.ucny ? l.rate : ""; }
+        else sub[k - 1] = costIt(sub[k - 1], l);
+        changed = true;
+      });
+      if (kept) res.keep++;
+      if (!changed) { res.same++; return; }
+      if (sub.length) n.extra._items = sub;
+      n.cost = main + itemsCost(sub);
+      const before = stOf(old);
+      if (!x._ord) { n.extra._ord = true; if (before === "new") n.extra._st = "new"; }
+      n.updatedAt = now;
+      res.upd.push({ old, n });
+      res.lines.push(code + " (" + (old.name || "").slice(0, 30) + "): tiền nhập " + fmt(old.cost || 0) + " → " + fmt(n.cost));
+    });
+    if (iCode < 0) res.errors.push("Không thấy cột MĐH (mã đơn hàng)");
     return res;
   }
   function applyShopee() {
@@ -2548,9 +2732,35 @@ function readFields_(cfg) {
     $("impOList").hidden = true;
     if (kind === "orders" && r.shopee) {
       n = r.add.length + r.upd.length;
+      if (r.cost) {
+        msg = "File giá vốn “" + r.file.name + "”: " + r.total + " dòng, " + (r.add.length + r.upd.length + r.same) + " đơn. " + r.upd.length + " đơn trong sổ được điền tiền nhập · " +
+          r.add.length + " đơn chưa có trong sổ sẽ thêm mới · " + r.same + " đơn không đổi" + (r.keep ? " (" + r.keep + " đơn đã có tiền nhập khác file → giữ nguyên)" : "") +
+          (r.noCost ? " · " + r.noCost + " đơn trong file chưa có Tệ/Thành tiền" : "") + "." + (r.fieldsPlan.length ? " Sẽ thêm cột: " + r.fieldsPlan.map((f) => f.name).join(", ") + "." : "");
+        const ul = $("impOList"); ul.textContent = "";
+        const all = r.warn.concat(r.lines);
+        all.slice(0, 30).forEach((t) => ul.append(el("li", { textContent: t, style: t[0] === "⚠" ? "color:var(--stk)" : "" })));
+        if (all.length > 30) ul.append(el("li", { textContent: "… và " + (all.length - 30) + " dòng khác" }));
+        ul.hidden = !all.length;
+        $("impODupWrap").hidden = true;
+        $("impOYes").textContent = n ? "Cập nhật " + n + " đơn" : "Không có gì mới";
+        $(P + "Msg").textContent = msg; $(P + "Yes").disabled = !n;
+        return;
+      }
+      if (r.income) {
+        msg = "File Doanh thu Shopee “" + r.file.name + "”: " + r.total + " đơn đã thanh toán. " + r.upd.length + " đơn cập nhật tiền về chính xác" +
+          (r.nst ? " (" + r.nst + " chuyển hoàn thành)" : "") + " · " + r.same + " đơn không đổi" + (r.missing ? " · " + r.missing + " đơn chưa có trong sổ (tải file Đơn hàng trước)" : "") + ".";
+        const ul = $("impOList"); ul.textContent = "";
+        r.lines.slice(0, 30).forEach((t) => ul.append(el("li", { textContent: t })));
+        if (r.lines.length > 30) ul.append(el("li", { textContent: "… và " + (r.lines.length - 30) + " đơn khác" }));
+        ul.hidden = !r.lines.length;
+        $("impODupWrap").hidden = true;
+        $("impOYes").textContent = n ? "Cập nhật " + n + " đơn" : "Không có gì mới";
+        $(P + "Msg").textContent = msg; $(P + "Yes").disabled = !n;
+        return;
+      }
       const c = (st) => r.add.filter((o) => stOf(o) === st).length;
       msg = "File Shopee “" + r.file.name + "”: " + r.total + " dòng, " + (r.add.length + r.upd.length + r.same) + " đơn. " +
-        r.add.length + " đơn mới" + (r.add.length ? " (" + [["done", "hoàn thành"], ["new", "đang xử lý"], ["huy", "đã hủy"]].filter(([k]) => c(k)).map(([k, t]) => c(k) + " " + t).join(", ") + ")" : "") +
+        r.add.length + " đơn mới" + (r.add.length ? " (" + [["done", "hoàn thành"], ["new", "đang xử lý"], ["stock", "trả hàng → tồn kho"], ["huy", "đã hủy"]].filter(([k]) => c(k)).map(([k, t]) => c(k) + " " + t).join(", ") + ")" : "") +
         " · " + r.upd.length + " đơn cập nhật (" + (r.nst || 0) + " đổi trạng thái" + (r.linked ? ", " + r.linked + " đơn cũ được gắn mã" : "") + ") · " + r.same + " đơn không đổi." +
         (r.fieldsPlan.length ? " Sẽ thêm cột: " + r.fieldsPlan.map((f) => f.name).join(", ") + "." : "");
       const ul = $("impOList"); ul.textContent = "";
@@ -2670,9 +2880,17 @@ function readFields_(cfg) {
       $(P + "Pick").disabled = true;
       try {
         if (kind === "orders") {
-          const rows = await readRows(f);
-          const at = rows.slice(0, 5).findIndex(isShopeeHead);
-          imp[kind] = at >= 0 ? parseShopee(rows, at, f) : await parseOrdersFile(f);
+          let got = null;
+          const book = await readBook(f);
+          for (const rows of book) {
+            const a0 = rows.slice(0, 10).findIndex(isCostHead);
+            if (a0 >= 0) { got = parseCost(rows, a0, f, book); break; }
+            const a1 = rows.slice(0, 10).findIndex(isIncomeHead);
+            if (a1 >= 0) { got = parseIncome(rows, a1, f); break; }
+            const a2 = rows.slice(0, 5).findIndex(isShopeeHead);
+            if (a2 >= 0) { got = parseShopee(rows, a2, f); break; }
+          }
+          imp[kind] = got || await parseOrdersFile(f);
         } else imp[kind] = await parseProductsFile(f);
         if (kind === "orders") $("impODup").checked = false;
         renderImp(kind);
