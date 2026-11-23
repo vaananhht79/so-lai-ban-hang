@@ -279,11 +279,16 @@ td.n .stack { justify-items: end; }
 .dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .dlg-x { border: 0; background: transparent; font-size: 1.1rem; padding: 4px 8px; }
 .list-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.search-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.search-row input { flex: 1 1 auto; max-width: 520px; font: inherit; padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--fg); }
+.search-row input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
 /* Sửa nhanh trong bảng */
 #rows td.ed { cursor: text; }
 #rows td.ed:hover { box-shadow: inset 0 -2px 0 var(--accent); }
 #rows td.ed.blank::after { content: "+"; color: var(--muted); opacity: 0.5; }
 #rows td input.qe.qt { width: 11em; text-align: left; }
+#rows td.note-c { white-space: normal; overflow-wrap: anywhere; min-width: 120px; max-width: 260px; }
+#rows td.note-c input.qe { width: 100%; min-width: 14em; }
 #rows td input.qe { width: 7em; max-width: 100%; text-align: right; font: inherit; padding: 3px 5px; border: 1px solid var(--accent); border-radius: 6px; background: var(--surface); color: var(--fg); }
 /* Bảng tổng theo sản phẩm */
 .sum-wrap { overflow-x: auto; margin-top: 12px; }
@@ -365,6 +370,8 @@ td.n .stack { justify-items: end; }
   .dlg { width: 100%; max-width: 100%; max-height: 100%; height: 100%; margin: 0; }
   .dlg > .card { min-height: 100%; border-radius: 0; }
   #rows td input.qe { font-size: 16px; width: 6.5em; }
+  .search-row input { font-size: 16px; max-width: none; }
+  #rows td.note-c { grid-column: 1 / -1; max-width: none; }
   #rows td.st-c { grid-column: 1 / -1; justify-content: start; gap: 12px; }
   .sumt { font-size: 0.85rem; }
   .sumt th, .sumt td { padding: 6px 4px; }
@@ -448,6 +455,7 @@ td.n .stack { justify-items: end; }
         <label class="f" data-col="ship"><span class="lbl">Tiền ship</span><input class="money" inputmode="numeric" id="fShip" placeholder="0"></label>
         <label class="f" data-col="revenue"><span class="lbl">Thực nhận</span><input class="money" inputmode="numeric" id="fRev" placeholder="0"></label>
         <label class="f" data-col="profit"><span class="lbl">Tiền lãi</span><input class="money" id="fProfit" disabled value="0"></label>
+        <label class="f wide" data-col="note"><span class="lbl">Note</span><input type="text" id="fNote" placeholder="Ghi chú cho đơn này…"></label>
       </div>
       <div class="items" id="itemsBox"></div>
       <div class="items-foot">
@@ -487,6 +495,10 @@ td.n .stack { justify-items: end; }
         <button type="button" class="btn-primary" id="impOYes">Nhập</button>
         <button type="button" id="impONo">Huỷ</button>
       </div>
+    </div>
+    <div class="search-row">
+      <input type="search" id="q" placeholder="🔍 Tìm theo tên khách, mã SP, phân loại, tên hàng, mã đơn…" autocomplete="off" aria-label="Tìm đơn">
+      <span class="sum-note" id="qCount"></span>
     </div>
     <div class="list-head" style="margin-top:10px">
       <p class="hint" style="margin:0">Bấm vào ô <b>Tệ, Tỷ giá, SL, Tiền nhập, Tiền ship, Thực nhận</b> để sửa ngay. Sửa thông tin khác: nút “Sửa”.</p>
@@ -986,8 +998,9 @@ function readFields_(cfg) {
     revenue: { label: "Thực nhận", hint: "Cố định · doanh thu" },
     profit: { label: "Tiền lãi", hint: "Tự tính" },
     status: { label: "Trạng thái", hint: "Hoàn thành / tồn kho" },
+    note: { label: "Note", hint: "Ghi chú tự do · bấm ô trong bảng để sửa" },
   };
-  const DEFAULT_ORDER = ["ordered", "date", "img", "sku", "name", "qty", "cny", "rate", "cost", "ship", "revenue", "profit", "status"];
+  const DEFAULT_ORDER = ["ordered", "date", "img", "sku", "name", "qty", "cny", "rate", "cost", "ship", "revenue", "profit", "status", "note"];
   // Cột theo từng sản phẩm (mỗi SP 1 hàng nhỏ trong đơn) và cột theo đơn (gộp ô, hiện 1 lần)
   const ITEM_KEYS = { img: 1, sku: 1, name: 1, qty: 1, cny: 1, rate: 1, cost: 1 };
   function perItemAllowed(c) { const f = fieldOf(c.key); return !!(f && f.type === "text"); }
@@ -1455,7 +1468,7 @@ function readFields_(cfg) {
       ship: parseMoney($("fShip").value),
       revenue: parseMoney($("fRev").value),
       done: $("fSt").value === "done",
-      extra: { ...readExtra(), _st: $("fSt").value === "done" ? undefined : $("fSt").value, _ord: $("fOrd").checked, _cny: cny || "", _rate: anyCny ? rate || "" : "", _qty: qty, _items: its.length ? its : undefined },
+      extra: { ...readExtra(), _note: $("fNote").value.trim(), _st: $("fSt").value === "done" ? undefined : $("fSt").value, _ord: $("fOrd").checked, _cny: cny || "", _rate: anyCny ? rate || "" : "", _qty: qty, _items: its.length ? its : undefined },
     };
   }
   function updatePreview() {
@@ -1537,6 +1550,7 @@ function readFields_(cfg) {
     $("fRev").value = money(o.revenue);
     $("fSt").value = stOf(o);
     $("fOrd").checked = !!(o.extra || {})._ord;
+    $("fNote").value = (o.extra || {})._note || "";
     fillExtra(o.extra);
     $("formTitle").textContent = "Sửa đơn";
     $("saveBtn").textContent = "Lưu thay đổi";
@@ -1560,6 +1574,8 @@ function readFields_(cfg) {
   $("allM").addEventListener("click", () => setRange("", ""));
   $("dFrom").addEventListener("change", () => setRange($("dFrom").value, range.to));
   $("dTo").addEventListener("change", () => setRange(range.from, $("dTo").value));
+  let qTimer = 0;
+  $("q").addEventListener("input", () => { clearTimeout(qTimer); qTimer = setTimeout(render, 150); });
   document.querySelectorAll(".filters button").forEach((b) => b.addEventListener("click", () => {
     filter = b.dataset.f;
     document.querySelectorAll(".filters button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
@@ -1692,8 +1708,19 @@ function readFields_(cfg) {
     cols.forEach((c) => th.append(el("th", { className: colClass(c), textContent: colLabel(c) })));
     th.append(el("th"));
 
+    // tìm kiếm: khách, mã SP, phân loại, tên hàng (cả tên trong danh mục sản phẩm), mã đơn… không phân biệt dấu/hoa thường
+    const qWords = norm($("q").value).split(" ").filter(Boolean);
+    const hay = (o) => {
+      const x = o.extra || {}, parts = [o.sku, o.name, (productOf(o) || {}).name, x._note];
+      fields.forEach((f) => { if (f.type === "text") parts.push(x[f.id]); });
+      itemsOf(o).forEach((it) => { parts.push(it.sku, it.name, (productByCode(it.sku) || {}).name); Object.values(it.f || {}).forEach((v) => parts.push(v)); });
+      return norm(parts.filter(Boolean).join(" "));
+    };
+    const found = qWords.length ? scope.filter((o) => { const h = hay(o); return qWords.every((w) => h.includes(w)); }) : scope;
+    const foundSet = new Set(found);
+    $("qCount").textContent = qWords.length ? "tìm thấy " + found.length + " đơn" : "";
     const list = scope
-      .filter((o) => filter === "all" || stOf(o) === filter)
+      .filter((o) => (filter === "all" || stOf(o) === filter) && foundSet.has(o))
       .sort((a, b) => dKey(b).localeCompare(dKey(a)) || String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 
     const tb = $("rows");
@@ -1730,8 +1757,8 @@ function readFields_(cfg) {
     } else empty.hidden = true;
     const hasMinus = fields.some((f) => f.type === "money" && f.effect === "minus");
     renderSummary(scope);
-    const cnt = { all: scope.length, new: 0, ord: 0, done: 0, stock: 0, huy: 0 };
-    scope.forEach((o) => cnt[stOf(o)]++);
+    const cnt = { all: found.length, new: 0, ord: 0, done: 0, stock: 0, huy: 0 };
+    found.forEach((o) => cnt[stOf(o)]++);
     document.querySelectorAll(".filters button").forEach((b) => {
       let c = b.querySelector(".cnt"); if (!c) { c = el("span", { className: "cnt" }); b.append(c); }
       c.textContent = cnt[b.dataset.f];
@@ -1767,6 +1794,7 @@ function readFields_(cfg) {
       case "cny": return el("td", { className: "n", textContent: fmtCny((o.extra || {})._cny) });
       case "rate": return el("td", { className: "n", textContent: (o.extra || {})._cny ? money(Number((o.extra || {})._rate) || 0) : "" });
       case "cost": return el("td", { className: "n", textContent: fmt(o.cost || 0) });
+      case "note": { const v = (o.extra || {})._note || ""; return quick(el("td", { className: "txt note-c", textContent: v }), v, (t) => t.trim(), (val) => { quickOrder = o; o.extra = { ...(o.extra || {}), _note: val || "" }; }, true); }
       case "ship": return quick(el("td", { className: "n", textContent: fmt(o.ship || 0) }), money(o.ship || 0), parseMoney, (v) => setOrderVal(o, "ship", v));
       case "revenue": return quick(el("td", { className: "n dim", textContent: fmt(o.revenue || 0) }), money(o.revenue || 0), parseMoney, (v) => setOrderVal(o, "revenue", v));
       case "profit": return el("td", { className: "n " + (p < 0 ? "neg" : "pos"), textContent: fmt(p) });
@@ -2165,7 +2193,7 @@ function readFields_(cfg) {
       if (f) { const v = (o.extra || {})[f.id]; return f.type === "check" ? (v ? "Có" : "") : f.type === "money" ? (Number(v) || 0) : (v || ""); }
       const pr = productOf(o);
       const x = o.extra || {};
-      return { qty: qtyOf(o), cny: x._cny || "", rate: x._cny ? x._rate || "" : "", ordered: x._ord ? "Có" : "", date: o.date, sku: o.sku || "", img: pr && /^https?:/.test(pr.img || "") ? pr.img : "", name: [o.name || (pr ? pr.name : "")].concat(itemsOf(o).map((it) => (it.name || it.sku) + (it.qty > 1 ? " ×" + it.qty : ""))).join(" + "), cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: ST_LABEL[stOf(o)] }[c.key];
+      return { qty: qtyOf(o), cny: x._cny || "", rate: x._cny ? x._rate || "" : "", ordered: x._ord ? "Có" : "", date: o.date, sku: o.sku || "", img: pr && /^https?:/.test(pr.img || "") ? pr.img : "", name: [o.name || (pr ? pr.name : "")].concat(itemsOf(o).map((it) => (it.name || it.sku) + (it.qty > 1 ? " ×" + it.qty : ""))).join(" + "), cost: o.cost || 0, ship: o.ship || 0, revenue: o.revenue || 0, profit: profitOf(o), status: ST_LABEL[stOf(o)], note: x._note || "" }[c.key];
     };
     const lines = [header.map(q).join(",")];
     orders.slice().sort((a, b) => (a.date || "").localeCompare(b.date || "")).forEach((o) => {
